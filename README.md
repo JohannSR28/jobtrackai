@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💼 JobTrackAI
 
-## Getting Started
+> **JobTrackAI** est une application SaaS qui automatise le suivi de vos candidatures à partir de vos e-mails Gmail ou Outlook.  
+> Elle analyse, classe et met à jour vos candidatures automatiquement pour vous offrir un tableau de bord clair, des statistiques utiles et un système de points pour gérer vos scans.
 
-First, run the development server:
+---
+
+## 🚀 Mission
+
+JobTrackAI simplifie la recherche d’emploi en supprimant la charge mentale du suivi.  
+L’objectif : vous aider à **garder le contrôle** sur vos candidatures, sans avoir à vérifier votre boîte mail chaque jour.
+
+---
+
+## ⚙️ Fonctionnalités principales
+
+### Authentification & Profil
+
+- Connexion / inscription via Supabase Auth
+- Profil utilisateur avec date du dernier scan
+- Suppression complète du compte
+
+### Connexion à la boîte mail
+
+- Connexion OAuth Gmail / Outlook
+- Rafraîchissement et révocation automatique des accès
+
+### Scan & Analyse
+
+- Scan initial et incrémental des e-mails
+- Détection automatique du statut de candidature
+- Regroupement par entreprise et poste (Threads)
+- Historique complet de l’évolution des statuts
+
+### Gestion & Tableau de bord
+
+- Liste et détail des candidatures
+- Statistiques globales
+- Filtrage et recherche intelligente
+
+### Notifications & Crédits
+
+- Notifications lors d’un changement de statut
+- Système de crédits pour gérer les scans
+- Paiement Stripe pour recharger les points
+
+### Export & Suppression
+
+- Export JSON de toutes vos données
+- Suppression automatique en cascade
+
+---
+
+## 🧠 Stack technique
+
+- **Frontend :** Next.js 14 (React + TypeScript)
+- **Backend :** API Routes (App Router)
+- **Base de données :** Supabase (PostgreSQL)
+- **Auth :** Supabase Auth (email / OAuth)
+- **Mail :** Gmail API & Microsoft Graph API
+- **Paiements :** Stripe Checkout
+- **UI :** TailwindCSS + shadcn/ui
+
+> 💡 L’architecture interne (services, repositories, hooks) évolue encore.  
+> Une documentation technique séparée (`schema_jobtrackai.md`) contient la structure SQL complète.
+
+---
+
+## 🗺️ Roadmap
+
+> 🔲 = à faire ✅ = terminé
+
+- [ ] Authentification (Supabase)
+- [ ] Connexion Gmail / Outlook
+- [ ] Scan initial des e-mails
+- [ ] Création automatique de threads
+- [ ] Historique et dashboard
+- [ ] Notifications
+- [ ] Système de crédits + Stripe
+- [ ] Export et suppression des données
+
+---
+
+## 🧭 Philosophie
+
+- **Automatiser sans compliquer.**
+- **Protéger les données utilisateur.**
+- **Donner une vision claire de la progression.**
+
+Chaque décision de conception (du schéma SQL à l’UI) vise la **simplicité, la fiabilité et la clarté**.
+
+---
+
+## 🧩 Installation (en local)
 
 ```bash
+git clone https://github.com/JohannSR28/jobtrackai.git
+cd jobtrackai
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
