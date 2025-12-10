@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sections JobTrackerAI</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Reset et Fontes */
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="py-20 relative z-20 bg-white">
+      <div class="max-w-5xl mx-auto px-6">
+        <div class="text-center mb-16">
+          <h2
+            class="text-3xl lg:text-4xl font-bold text-slate-900 mb-4 tracking-tight uppercase"
+          >
+            Comment ça marche
+          </h2>
+          <p class="text-slate-500 text-lg">
+            Votre recherche d'emploi simplifiée en trois étapes.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div
+            class="scroll-animate opacity-0 translate-y-12 transition-all duration-700 ease-out delay-[0ms] flex flex-col items-start bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div class="relative mb-4">
+              <div
+                class="absolute bottom-1 left-0 w-14 h-10 bg-blue-100/80 rounded-lg -z-10"
+              ></div>
+              <span class="text-6xl font-bold text-slate-800 leading-none"
+                >1</span
+              >
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">
+              Connectez votre Gmail
+            </h3>
+            <p class="text-slate-500 text-sm leading-relaxed">
+              Liez votre compte en quelques clics. Nous scannons uniquement vos
+              emails de candidature de manière sécurisée.
+            </p>
+          </div>
+
+          <div
+            class="scroll-animate opacity-0 translate-y-12 transition-all duration-700 ease-out delay-[200ms] flex flex-col items-start bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div class="relative mb-4">
+              <div
+                class="absolute bottom-1 left-0 w-14 h-10 bg-blue-100/80 rounded-lg -z-10"
+              ></div>
+              <span class="text-6xl font-bold text-slate-800 leading-none"
+                >2</span
+              >
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">
+              Synchro automatique
+            </h3>
+            <p class="text-slate-500 text-sm leading-relaxed">
+              JobTrackerAI détecte vos nouvelles candidatures et les ajoute
+              instantanément à votre tableau de bord.
+            </p>
+          </div>
+
+          <div
+            class="scroll-animate opacity-0 translate-y-12 transition-all duration-700 ease-out delay-[400ms] flex flex-col items-start bg-white p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div class="relative mb-4">
+              <div
+                class="absolute bottom-1 left-0 w-14 h-10 bg-blue-100/80 rounded-lg -z-10"
+              ></div>
+              <span class="text-6xl font-bold text-slate-800 leading-none"
+                >3</span
+              >
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">
+              Suivez vos progrès
+            </h3>
+            <p class="text-slate-500 text-sm leading-relaxed">
+              C'est tout ! Visualisez vos statuts, relances et entretiens sur
+              une interface unifiée.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="w-full mb-32 relative z-20">
+      <div class="max-w-[1200px] mx-auto px-6">
+        <div
+          class="bg-slate-50 border border-slate-200 rounded-3xl p-10 lg:p-20 text-center relative overflow-hidden"
+        >
+          <div
+            class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-[#5f79b2] to-transparent opacity-30"
+          ></div>
+
+          <h2
+            class="text-3xl lg:text-5xl font-bold text-slate-900 mb-6 tracking-tight"
+          >
+            Inscrivez-vous maintenant et recevez<br />
+            <span class="text-[#5f79b2]">500 points gratuitement</span>
+          </h2>
+
+          <p
+            class="text-slate-500 text-lg mb-10 max-w-2xl mx-auto leading-relaxed"
+          >
+            Rejoignez JobTrackerAI aujourd'hui pour booster votre recherche
+            d'emploi. Ces points de bienvenue seront crédités automatiquement
+            dès la création de votre compte.
+          </p>
+
+          <button
+            onclick="openModal()"
+            class="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-[#5f79b2] rounded-full hover:bg-[#3c4d7d] hover:-translate-y-0.5 transition-all duration-300 shadow-lg hover:shadow-xl"
+          >
+            S’inscrire maintenant
+          </button>
+
+          <p class="mt-4 text-xs text-slate-400">
+            Aucune carte de crédit requise • Annulable à tout moment
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <div
+      id="signupModal"
+      class="fixed inset-0 z-[100] hidden"
+      aria-labelledby="modal-title"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0"
+        id="modalBackdrop"
+      ></div>
+
+      <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div
+          class="flex min-h-full items-center justify-center p-4 text-center sm:p-0"
+        >
+          <div
+            class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-md opacity-0 scale-95"
+            id="modalPanel"
+          >
+            <button
+              onclick="closeModal()"
+              class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-2 rounded-full hover:bg-slate-100 focus:outline-none"
+            >
+              <svg
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="2"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            <div class="px-8 py-10">
+              <div id="modalFormContent">
+                <div class="text-center mb-8">
+                  <h3
+                    class="text-2xl font-bold text-slate-900 leading-6 mb-2"
+                    id="modal-title"
+                  >
+                    Créez votre compte
+                  </h3>
+                  <p class="text-sm text-slate-500">
+                    Remplissez ce formulaire pour débloquer vos
+                    <span class="font-semibold text-[#5f79b2]">500 points</span
+                    >.
+                  </p>
+                </div>
+
+                <form id="signupForm" class="space-y-5" novalidate>
+                  <div>
+                    <label
+                      for="fullName"
+                      class="block text-sm font-medium text-slate-700 mb-1"
+                      >Nom complet</label
+                    >
+                    <input
+                      type="text"
+                      id="fullName"
+                      class="block w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#5f79b2] focus:ring-2 focus:ring-[#5f79b2]/20 focus:outline-none transition-all sm:text-sm"
+                      placeholder="Jean Dupont"
+                    />
+                    <p id="errorName" class="mt-1 text-xs text-red-500 hidden">
+                      Le nom est requis.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label
+                      for="email"
+                      class="block text-sm font-medium text-slate-700 mb-1"
+                      >Adresse e-mail</label
+                    >
+                    <input
+                      type="email"
+                      id="email"
+                      class="block w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-[#5f79b2] focus:ring-2 focus:ring-[#5f79b2]/20 focus:outline-none transition-all sm:text-sm"
+                      placeholder="vous@exemple.com"
+                    />
+                    <p id="errorEmail" class="mt-1 text-xs text-red-500 hidden">
+                      Veuillez entrer une adresse e-mail valide.
+                    </p>
+                  </div>
+
+                  <div class="pt-2">
+                    <button
+                      type="submit"
+                      class="w-full rounded-full bg-[#5f79b2] px-4 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-[#3c4d7d] hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5f79b2] transition-all duration-300"
+                    >
+                      Valider
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div id="modalSuccessContent" class="hidden text-center py-4">
+                <div
+                  class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6"
+                >
+                  <svg
+                    class="h-8 w-8 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M4.5 12.75l6 6 9-13.5"
+                    />
+                  </svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 mb-2">
+                  Inscription réussie !
+                </h3>
+                <p class="text-slate-500 text-sm mb-6">
+                  Merci ! Votre inscription est prise en compte.<br />
+                  Vos <strong>500 points</strong> ont été crédités sur votre
+                  compte.
+                </p>
+                <button
+                  onclick="closeModal()"
+                  class="text-sm font-semibold text-[#5f79b2] hover:text-[#3c4d7d] underline"
+                >
+                  Fermer la fenêtre
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* --- Script Animation au Scroll --- */
+      document.addEventListener("DOMContentLoaded", () => {
+        const observer = new IntersectionObserver(
+          (entries, observer) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.remove("opacity-0", "translate-y-12");
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.1 }
+        );
+
+        document
+          .querySelectorAll(".scroll-animate")
+          .forEach((el) => observer.observe(el));
+      });
+
+      /* --- Script Modale & Formulaire --- */
+      const modal = document.getElementById("signupModal");
+      const backdrop = document.getElementById("modalBackdrop");
+      const panel = document.getElementById("modalPanel");
+      const form = document.getElementById("signupForm");
+      const formContent = document.getElementById("modalFormContent");
+      const successContent = document.getElementById("modalSuccessContent");
+      const nameInput = document.getElementById("fullName");
+      const emailInput = document.getElementById("email");
+      const errorName = document.getElementById("errorName");
+      const errorEmail = document.getElementById("errorEmail");
+
+      function openModal() {
+        modal.classList.remove("hidden");
+        setTimeout(() => {
+          backdrop.classList.remove("opacity-0");
+          panel.classList.remove("opacity-0", "scale-95");
+          panel.classList.add("opacity-100", "scale-100");
+        }, 10);
+      }
+
+      function closeModal() {
+        backdrop.classList.add("opacity-0");
+        panel.classList.remove("opacity-100", "scale-100");
+        panel.classList.add("opacity-0", "scale-95");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+          resetForm();
+        }, 300);
+      }
+
+      function resetForm() {
+        form.reset();
+        errorName.classList.add("hidden");
+        errorEmail.classList.add("hidden");
+        nameInput.classList.remove("border-red-500", "focus:ring-red-500");
+        emailInput.classList.remove("border-red-500", "focus:ring-red-500");
+        formContent.classList.remove("hidden");
+        successContent.classList.add("hidden");
+      }
+
+      function validateEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).toLowerCase());
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        let isValid = true;
+
+        if (nameInput.value.trim() === "") {
+          errorName.classList.remove("hidden");
+          nameInput.classList.add("border-red-500", "focus:ring-red-500");
+          isValid = false;
+        } else {
+          errorName.classList.add("hidden");
+          nameInput.classList.remove("border-red-500", "focus:ring-red-500");
+        }
+
+        if (!validateEmail(emailInput.value)) {
+          errorEmail.classList.remove("hidden");
+          emailInput.classList.add("border-red-500", "focus:ring-red-500");
+          isValid = false;
+        } else {
+          errorEmail.classList.add("hidden");
+          emailInput.classList.remove("border-red-500", "focus:ring-red-500");
+        }
+
+        if (isValid) {
+          // Simulation d'envoi
+          console.log("Submit:", {
+            name: nameInput.value,
+            email: emailInput.value,
+          });
+          formContent.classList.add("hidden");
+          successContent.classList.remove("hidden");
+        }
+      });
+
+      // Fermeture au clic dehors
+      modal.addEventListener("click", (e) => {
+        if (e.target.closest("#modalPanel") === null) {
+          closeModal();
+        }
+      });
+
+      // Fermeture avec Echap
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !modal.classList.contains("hidden"))
+          closeModal();
+      });
+    </script>
+  </body>
+</html>

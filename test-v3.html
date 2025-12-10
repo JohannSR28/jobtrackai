@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JobTrackAI - Suite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* --- TON CSS GLOBAL --- */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background-color: #f5f5f7;
+        margin: 0;
+        padding: 0;
+      }
+
+      /* --- TYPOGRAPHIE GENLABS (Style conservé) --- */
+      .gen-typography {
+        font-weight: 700;
+        line-height: 0.92;
+        letter-spacing: -2px;
+        text-transform: uppercase;
+        color: #000;
+      }
+
+      .gen-title-section {
+        font-size: 56px;
+        letter-spacing: -2.5px;
+        max-width: 800px;
+      }
+
+      .gen-title-card {
+        font-size: 28px;
+        letter-spacing: -1px;
+        margin-bottom: 0.75rem;
+      }
+
+      @media (max-width: 768px) {
+        .gen-title-section {
+          font-size: 42px;
+          letter-spacing: -2px;
+        }
+        .gen-title-card {
+          font-size: 24px;
+        }
+      }
+
+      /* --- EFFETS --- */
+      .hover-lift {
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      .hover-lift:hover {
+        transform: translateY(-10px);
+      }
+
+      /* Effet "Golden Glass" pour le badge */
+      .gold-glass {
+        background: rgba(255, 159, 67, 0.15);
+        border: 1px solid rgba(255, 159, 67, 0.4);
+        backdrop-filter: blur(10px);
+        color: #ff9f43;
+        box-shadow: 0 0 15px rgba(255, 159, 67, 0.1);
+      }
+
+      /* Animation Modal */
+      .modal-enter {
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+    </style>
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "gen-bg": "#F5F5F7",
+              "gen-black": "#0A0A0A",
+              "gen-orange": "#FF9F43",
+              "gen-orange-light": "#ffb066",
+              "gen-border": "#E5E5E5",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body>
+    <section
+      id="how-it-works"
+      class="py-24 border-b border-gen-border bg-white relative overflow-hidden"
+    >
+      <div class="max-w-[1200px] mx-auto px-6">
+        <div class="mb-20 max-w-3xl">
+          <h2 class="gen-typography gen-title-section mb-6">
+            COMMENT ÇA MARCHE ?
+          </h2>
+          <p class="text-xl text-gray-500 font-medium">
+            Trois étapes simples. Zéro configuration complexe.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div
+            class="group relative bg-gen-bg border border-gen-border rounded-2xl p-8 hover-lift cursor-default overflow-hidden h-full flex flex-col justify-between"
+          >
+            <div>
+              <div
+                class="absolute top-0 right-0 p-6 opacity-10 font-bold text-9xl -mt-6 -mr-6 select-none group-hover:text-gen-orange transition-colors duration-500 font-sans"
+              >
+                1
+              </div>
+
+              <div
+                class="w-14 h-14 bg-white border border-gen-border rounded-xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform duration-300 relative z-10 text-black"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                  ></path>
+                  <path
+                    d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                  ></path>
+                </svg>
+              </div>
+
+              <h3 class="gen-typography gen-title-card relative z-10">
+                CONNECTEZ VOTRE<br />COMPTE
+              </h3>
+              <p
+                class="text-gray-500 text-sm leading-relaxed relative z-10 font-medium"
+              >
+                Liez votre boîte mail (Gmail/Outlook) via notre protocole
+                sécurisé.
+              </p>
+            </div>
+            <div
+              class="mt-8 h-1.5 w-12 bg-gray-300 rounded-full group-hover:w-full group-hover:bg-gen-orange transition-all duration-500"
+            ></div>
+          </div>
+
+          <div
+            class="group relative bg-gen-bg border border-gen-border rounded-2xl p-8 hover-lift cursor-default overflow-hidden h-full flex flex-col justify-between"
+          >
+            <div>
+              <div
+                class="absolute top-0 right-0 p-6 opacity-10 font-bold text-9xl -mt-6 -mr-6 select-none group-hover:text-gen-orange transition-colors duration-500 font-sans"
+              >
+                2
+              </div>
+
+              <div
+                class="w-14 h-14 bg-white border border-gen-border rounded-xl flex items-center justify-center mb-8 shadow-sm group-hover:scale-110 transition-transform duration-300 relative z-10 text-black"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
+                  ></path>
+                </svg>
+              </div>
+
+              <h3 class="gen-typography gen-title-card relative z-10">
+                ANALYSE IA<br />AUTOMATIQUE
+              </h3>
+              <p
+                class="text-gray-500 text-sm leading-relaxed relative z-10 font-medium"
+              >
+                Notre algorithme scanne et identifie les opportunités.
+              </p>
+            </div>
+            <div
+              class="mt-8 h-1.5 w-12 bg-gray-300 rounded-full group-hover:w-full group-hover:bg-gen-orange transition-all duration-500 delay-75"
+            ></div>
+          </div>
+
+          <div
+            class="group relative bg-gen-black text-white rounded-2xl p-8 hover-lift cursor-default overflow-hidden shadow-2xl h-full flex flex-col justify-between border border-gray-800"
+          >
+            <div>
+              <div
+                class="absolute top-0 right-0 p-6 opacity-20 font-bold text-9xl -mt-6 -mr-6 select-none font-sans"
+              >
+                3
+              </div>
+
+              <div
+                class="w-14 h-14 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center mb-8 backdrop-blur-sm group-hover:scale-110 transition-transform duration-300 relative z-10 text-white"
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect width="18" height="18" x="3" y="3" rx="1"></rect>
+                  <rect width="7" height="7" x="3" y="3"></rect>
+                  <rect width="7" height="7" x="14" y="3"></rect>
+                  <rect width="7" height="7" x="14" y="14"></rect>
+                  <rect width="7" height="7" x="3" y="14"></rect>
+                </svg>
+              </div>
+
+              <h3
+                class="gen-typography gen-title-card text-gen-orange relative z-10"
+              >
+                DASHBOARD<br />LIVE
+              </h3>
+              <p
+                class="text-gray-400 text-sm leading-relaxed relative z-10 font-medium"
+              >
+                Suivez l'évolution en temps réel sur votre tableau de bord.
+              </p>
+            </div>
+            <div
+              class="mt-8 h-1.5 w-12 bg-gray-700 rounded-full group-hover:w-full group-hover:bg-gen-orange transition-all duration-500 delay-150"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-gen-black text-white py-32 relative overflow-hidden">
+      <div
+        class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-gen-orange opacity-[0.08] blur-[150px] rounded-full pointer-events-none"
+      ></div>
+
+      <div class="max-w-[1200px] mx-auto px-6 relative z-10 text-center">
+        <span
+          class="inline-block py-2 px-5 rounded-full gold-glass text-xs font-mono uppercase tracking-widest mb-8 font-bold"
+        >
+          Offre de lancement
+        </span>
+
+        <h2
+          class="gen-typography gen-title-section text-white mx-auto mb-10"
+          style="color: white"
+        >
+          NE PERDEZ PLUS JAMAIS<br />
+          <span class="text-gen-orange">UNE OPPORTUNITÉ</span>
+        </h2>
+
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-20 text-left"
+        >
+          <div class="border-t border-white/20 pt-8">
+            <h4
+              class="gen-typography text-xl mb-3 text-white"
+              style="letter-spacing: -0.5px; font-size: 20px"
+            >
+              GAIN DE TEMPS
+            </h4>
+            <p class="text-gray-400 text-sm font-medium">
+              Fini les fichiers Excel manuels. Tout est automatisé.
+            </p>
+          </div>
+          <div class="border-t border-white/20 pt-8">
+            <h4
+              class="gen-typography text-xl mb-3 text-white"
+              style="letter-spacing: -0.5px; font-size: 20px"
+            >
+              CENTRALISATION
+            </h4>
+            <p class="text-gray-400 text-sm font-medium">
+              Linkedin, Indeed, WelcomeToTheJungle : tout au même endroit.
+            </p>
+          </div>
+          <div class="border-t border-white/20 pt-8">
+            <h4
+              class="gen-typography text-xl mb-3 text-white"
+              style="letter-spacing: -0.5px; font-size: 20px"
+            >
+              NOTIFICATIONS
+            </h4>
+            <p class="text-gray-400 text-sm font-medium">
+              Soyez alerté dès qu'un recruteur vous répond.
+            </p>
+          </div>
+          <div class="border-t border-white/20 pt-8">
+            <h4
+              class="gen-typography text-xl mb-3 text-white"
+              style="letter-spacing: -0.5px; font-size: 20px"
+            >
+              CONFIDENTIALITÉ
+            </h4>
+            <p class="text-gray-400 text-sm font-medium">
+              Vos données sont chiffrées et ne sont jamais revendues.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-20">
+          <button
+            id="btn-activate"
+            class="bg-gen-orange text-black px-12 py-5 rounded-full font-bold text-lg hover:bg-gen-orange-light hover:shadow-[0_0_50px_rgba(255,159,67,0.5)] active:scale-95 active:shadow-none transition-all duration-200 uppercase tracking-tight transform"
+          >
+            Activer mes 500 points offerts
+          </button>
+          <p class="text-xs text-gray-500 mt-6 font-mono">
+            PAS DE CARTE BANCAIRE REQUISE.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="border-b border-gen-border bg-gen-bg">
+      <div class="grid grid-cols-1 lg:grid-cols-3 max-w-[1440px] mx-auto">
+        <div
+          class="p-12 lg:p-20 border-b lg:border-b-0 lg:border-r border-gen-border bg-white"
+        >
+          <h2
+            class="gen-typography gen-title-section mb-6"
+            style="font-size: 42px"
+          >
+            QUESTIONS<br />FRÉQUENTES
+          </h2>
+          <p class="text-gray-500 font-medium">
+            Vous avez des doutes ? Voici les réponses.
+          </p>
+          <div class="mt-8">
+            <a
+              href="#"
+              class="text-sm font-bold underline decoration-2 underline-offset-4 hover:text-gen-orange uppercase tracking-wide"
+              >Contacter le support →</a
+            >
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 p-12 lg:p-20">
+          <div class="space-y-10">
+            <div>
+              <h4
+                class="gen-typography text-xl mb-3"
+                style="font-size: 22px; letter-spacing: -1px"
+              >
+                COMMENT JOBTRACKAI DÉTECTE-T-IL MES CANDIDATURES ?
+              </h4>
+              <p
+                class="text-gray-600 font-medium text-sm leading-relaxed max-w-2xl"
+              >
+                L’outil utilise des modèles de langage (LLM) pour analyser le
+                contenu de vos e-mails entrants et identifier automatiquement
+                les messages de confirmation de candidature.
+              </p>
+            </div>
+            <div class="w-full h-px bg-gray-200"></div>
+            <div>
+              <h4
+                class="gen-typography text-xl mb-3"
+                style="font-size: 22px; letter-spacing: -1px"
+              >
+                MES DONNÉES SONT-ELLES SÉCURISÉES ?
+              </h4>
+              <p
+                class="text-gray-600 font-medium text-sm leading-relaxed max-w-2xl"
+              >
+                Absolument. Nous utilisons l'API officielle de Gmail/Outlook
+                avec un chiffrement de bout en bout.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="bg-gen-bg pt-20 pb-10 border-t border-gen-border">
+      <div class="max-w-[1200px] mx-auto px-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div class="col-span-1 md:col-span-2">
+            <div class="flex items-center gap-3 mb-6">
+              <div
+                class="w-8 h-8 bg-black rounded flex items-center justify-center text-white font-bold text-lg"
+              >
+                J
+              </div>
+              <span class="gen-typography text-2xl" style="letter-spacing: -1px"
+                >JOBTRACKAI</span
+              >
+            </div>
+            <p class="text-gray-500 text-sm max-w-xs mb-6 font-medium">
+              Automatisez le chaos, décrochez le job.
+            </p>
+            <div
+              class="font-mono text-xs text-gray-400 bg-gray-200/50 p-3 rounded inline-block"
+            >
+              <span
+                class="w-2 h-2 bg-green-500 rounded-full inline-block mr-2 animate-pulse"
+              ></span>
+              SYSTEMS OPERATIONAL<br />
+              SERVER TIME: <span id="orbit-time">--:--:--</span> UTC
+            </div>
+          </div>
+
+          <div>
+            <h4
+              class="font-bold mb-6 text-xs uppercase tracking-widest text-gray-400"
+            >
+              PRODUIT
+            </h4>
+            <ul class="space-y-3 text-sm font-bold text-gray-600">
+              <li>
+                <a href="#" class="hover:text-black transition-colors"
+                  >FONCTIONNALITÉS</a
+                >
+              </li>
+              <li>
+                <a href="#" class="hover:text-black transition-colors"
+                  >TARIFS</a
+                >
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4
+              class="font-bold mb-6 text-xs uppercase tracking-widest text-gray-400"
+            >
+              LÉGAL
+            </h4>
+            <ul class="space-y-3 text-sm font-bold text-gray-600">
+              <li>
+                <a href="#" class="hover:text-black transition-colors"
+                  >CONFIDENTIALITÉ</a
+                >
+              </li>
+              <li>
+                <a href="#" class="hover:text-black transition-colors"
+                  >CONDITIONS</a
+                >
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div
+          class="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-400 font-medium"
+        >
+          <p>© 2024 JOBTRACKAI. ALL RIGHTS RESERVED.</p>
+        </div>
+      </div>
+    </footer>
+
+    <div id="signup-modal" class="fixed inset-0 z-50 hidden">
+      <div
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        id="modal-overlay"
+      ></div>
+
+      <div class="relative min-h-screen flex items-center justify-center p-4">
+        <div
+          class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 transform scale-95 transition-all modal-enter border border-gray-100"
+        >
+          <button
+            id="close-modal"
+            class="absolute top-4 right-4 text-gray-400 hover:text-black"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+
+          <div class="text-center mb-8">
+            <div
+              class="w-12 h-12 bg-gen-orange rounded-full flex items-center justify-center text-white text-xl font-bold mx-auto mb-4"
+            >
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="3" y="8" width="18" height="4" rx="1" />
+                <path d="M12 8v13" />
+                <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+                <path
+                  d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"
+                />
+              </svg>
+            </div>
+            <h3
+              class="gen-typography text-2xl mb-2"
+              style="letter-spacing: -1px"
+            >
+              ACTIVER MES POINTS
+            </h3>
+            <p class="text-gray-500 text-sm">
+              Entrez vos coordonnées pour lier votre compte et débloquer vos 500
+              crédits.
+            </p>
+          </div>
+
+          <form class="space-y-4">
+            <div>
+              <label
+                class="block text-xs font-bold uppercase text-gray-500 mb-1 ml-1"
+                >Nom complet</label
+              >
+              <input
+                type="text"
+                placeholder="Ex: Thomas Anderson"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 font-medium focus:outline-none focus:border-gen-orange focus:ring-1 focus:ring-gen-orange transition-colors"
+              />
+            </div>
+
+            <div>
+              <label
+                class="block text-xs font-bold uppercase text-gray-500 mb-1 ml-1"
+                >Adresse E-mail</label
+              >
+              <input
+                type="email"
+                placeholder="Ex: thomas@email.com"
+                class="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 font-medium focus:outline-none focus:border-gen-orange focus:ring-1 focus:ring-gen-orange transition-colors"
+              />
+            </div>
+
+            <button
+              type="button"
+              class="w-full bg-gen-black text-white font-bold py-4 rounded-xl mt-4 hover:bg-black/90 transition-colors uppercase tracking-wide text-sm flex items-center justify-center gap-2 group"
+            >
+              Confirmer l'inscription
+              <span class="group-hover:translate-x-1 transition-transform"
+                >→</span
+              >
+            </button>
+          </form>
+
+          <p class="text-center text-xs text-gray-400 mt-6">
+            En cliquant, vous acceptez nos conditions d'utilisation.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Orbit Time
+      function updateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString("en-US", { hour12: false });
+        document.getElementById("orbit-time").textContent = timeString;
+      }
+      setInterval(updateTime, 1000);
+      updateTime();
+
+      // Modal Logic
+      const btnActivate = document.getElementById("btn-activate");
+      const modal = document.getElementById("signup-modal");
+      const closeModal = document.getElementById("close-modal");
+      const overlay = document.getElementById("modal-overlay");
+
+      function openModal() {
+        modal.classList.remove("hidden");
+      }
+
+      function closeModalFunc() {
+        modal.classList.add("hidden");
+      }
+
+      btnActivate.addEventListener("click", openModal);
+      closeModal.addEventListener("click", closeModalFunc);
+      overlay.addEventListener("click", closeModalFunc);
+    </script>
+  </body>
+</html>

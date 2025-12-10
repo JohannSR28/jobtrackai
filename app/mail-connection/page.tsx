@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { redirect } from "next/navigation";
 import { useGmailConnection } from "@/hooks/useGmailConnection";
@@ -22,11 +21,8 @@ export default function MailConnectionsTestPage() {
     emails,
     loading: emailsLoading,
     error: emailsError,
-    fetchEmailsByDateRange,
+    fetchRecentEmails,
   } = useGmailEmails();
-
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   // --- Redirection si non authentifié ---
   if (authLoading) return <p className="text-center p-6">Chargement...</p>;
@@ -52,13 +48,11 @@ export default function MailConnectionsTestPage() {
       </div>
     );
 
-  // --- Lecture des e-mails ---
+  // --- Lecture des e-mails (50 derniers) ---
   const handleFetchEmails = () => {
     if (!connected)
       return alert("Veuillez d'abord connecter votre compte Gmail.");
-    if (!startDate || !endDate)
-      return alert("Veuillez sélectionner une plage de dates.");
-    fetchEmailsByDateRange(startDate, endDate);
+    fetchRecentEmails();
   };
 
   return (
@@ -66,7 +60,7 @@ export default function MailConnectionsTestPage() {
       <GoToMainButton />
       <h1 className="text-3xl font-bold">Bloc B — Connexion à Gmail</h1>
       <p className="text-gray-600">
-        Test de connexion OAuth et récupération des e-mails.
+        Test de connexion OAuth et récupération des 50 derniers e-mails.
       </p>
 
       {/* --- Boutons de connexion --- */}
@@ -117,22 +111,8 @@ export default function MailConnectionsTestPage() {
         <p className="text-gray-600">⚠️ Aucun compte Gmail connecté.</p>
       )}
 
-      {/* --- Sélecteurs de date + bouton --- */}
-      <div className="mt-6 space-x-3">
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="border p-2 rounded"
-          disabled={!connected}
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="border p-2 rounded"
-          disabled={!connected}
-        />
+      {/* --- Bouton pour récupérer les 50 derniers e-mails --- */}
+      <div className="mt-6">
         <button
           onClick={handleFetchEmails}
           disabled={!connected || emailsLoading}
@@ -144,7 +124,7 @@ export default function MailConnectionsTestPage() {
               : "bg-indigo-600 hover:bg-indigo-700"
           }`}
         >
-          {emailsLoading ? "Chargement..." : "Afficher les mails"}
+          {emailsLoading ? "Chargement..." : "Afficher les 50 derniers mails"}
         </button>
       </div>
 

@@ -57,6 +57,16 @@ export default function HomePage() {
       <h1 style={h1Style}>Welcome to the Home Page</h1>
       <div style={buttonContainerStyle}>
         <button
+          onClick={() => redirect("/landing-page")}
+          style={buttonStyle}
+          onMouseOver={handleMouseOver}
+          onMouseOut={handleMouseOut}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+        >
+          Go to Landing Page
+        </button>
+        <button
           onClick={() => redirect("/auth-test-page")}
           style={buttonStyle}
           onMouseOver={handleMouseOver}
@@ -85,6 +95,26 @@ export default function HomePage() {
           onMouseUp={handleMouseUp}
         >
           Scan & Analyse automatique
+        </button>
+        <button
+          onClick={() => redirect("/credits-test")}
+          style={buttonStyle}
+          onMouseOver={handleMouseOver}
+          onMouseOut={handleMouseOut}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+        >
+          Test Crédit
+        </button>
+        <button
+          onClick={() => redirect("/application-test")}
+          style={buttonStyle}
+          onMouseOver={handleMouseOver}
+          onMouseOut={handleMouseOut}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+        >
+          Test Candidatures
         </button>
       </div>
     </main>

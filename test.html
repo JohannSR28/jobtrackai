@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hero Example</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: Inter, system-ui, sans-serif;
+        background: #ffffff;
+        color: #0f172a;
+      }
+
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+
+      /* ------------------ HERO TEXT ------------------ */
+
+      .hero {
+        position: relative;
+        padding-bottom: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .headline {
+        max-width: 540px;
+        font-size: 64px;
+        line-height: 1.05;
+        letter-spacing: -0.05em;
+        font-weight: 600;
+      }
+
+      .headline-main {
+        display: block;
+      }
+
+      .headline-highlight {
+        color: #4f46e5; /* bleu-violet */
+      }
+
+      .hero-actions {
+        margin-top: 12px;
+      }
+
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 18px 42px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #4f46e5, #7c2bff);
+        color: white;
+        font-size: 18px;
+        box-shadow: 0 12px 26px rgba(79, 70, 229, 0.45);
+        border: none;
+        cursor: pointer;
+        transition: 0.2s ease-out;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 16px 34px rgba(79, 70, 229, 0.55);
+      }
+
+      .btn-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        border: 2px solid #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* ------------------ INFO-CARD (desktop uniquement) ------------------ */
+
+      .info-card {
+        position: absolute;
+        top: 40px;
+        right: 0;
+
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+
+        padding: 10px 18px;
+        max-width: 340px;
+
+        font-size: 13px;
+        line-height: 1.4;
+        color: #0f172a;
+
+        background: radial-gradient(
+            circle at top left,
+            rgba(79, 70, 229, 0.22),
+            rgba(255, 255, 255, 0.98)
+          ),
+          #ffffff;
+        backdrop-filter: blur(14px);
+
+        border-radius: 999px;
+        border: 1px solid rgba(79, 70, 229, 0.35);
+
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+
+        animation: infoFadeIn 0.4s ease-out both;
+      }
+
+      .info-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #4f46e5, #7c2bff);
+        flex-shrink: 0;
+      }
+
+      .info-text strong {
+        font-weight: 600;
+        color: #020617;
+      }
+
+      @keyframes infoFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* ------------------ HERO IMAGE ------------------ */
+
+      .hero-visual {
+        margin-top: 40px;
+        width: 100%;
+      }
+
+      .hero-image-frame {
+        position: relative;
+        width: 100%;
+        max-width: 880px;
+        margin: 0 auto;
+        aspect-ratio: 16 / 9;
+        border-radius: 28px;
+        overflow: visible;
+        will-change: transform;
+        transition: transform 0.12s ease-out;
+      }
+
+      .hero-image-frame::before {
+        content: "";
+        position: absolute;
+        inset: -18px;
+        border-radius: 40px;
+        background: radial-gradient(
+          circle at 10% 0%,
+          rgba(79, 70, 229, 0.3),
+          rgba(167, 194, 255, 0.2),
+          transparent 70%
+        );
+        filter: blur(8px);
+        z-index: -2;
+      }
+
+      .hero-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 28px;
+        box-shadow: 0 26px 70px rgba(15, 23, 42, 0.45);
+        position: relative;
+        z-index: 0;
+      }
+
+      /* ------------------ RESPONSIVE HERO ------------------ */
+
+      @media (max-width: 900px) {
+        .page {
+          padding: 32px 16px 56px;
+        }
+
+        .hero {
+          gap: 18px;
+        }
+
+        .headline {
+          max-width: none;
+          font-size: 42px;
+          line-height: 1.08;
+        }
+
+        .hero-actions {
+          margin-top: 10px;
+        }
+
+        /* bulle cachée sur tablette & mobile */
+        .info-card {
+          display: none;
+        }
+
+        .hero-visual {
+          margin-top: 28px;
+        }
+
+        .hero-image-frame {
+          max-width: 100%;
+          border-radius: 24px;
+        }
+
+        .hero-image {
+          border-radius: 24px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .headline {
+          font-size: 32px;
+          line-height: 1.12;
+        }
+
+        .btn-primary {
+          width: 100%;
+          justify-content: center;
+          padding: 14px 24px;
+          font-size: 16px;
+        }
+
+        .hero-visual {
+          margin-top: 24px;
+        }
+
+        .hero-image-frame::before {
+          inset: -10px;
+        }
+      }
+
+      /* ===================== */
+      /* Section Communication */
+      /* ===================== */
+
+      .comm-section {
+        position: relative;
+        height: 260vh; /* scrollytelling sur desktop */
+        padding: 80px 0 60px;
+      }
+
+      .comm-inner {
+        position: sticky;
+        top: 18vh;
+        text-align: center;
+      }
+
+      .comm-title {
+        font-weight: 500;
+        letter-spacing: -0.03em;
+        line-height: 1.18;
+        /* font-size contrôlée en JS sur desktop */
+      }
+
+      .comm-card-shell {
+        margin: 40px auto 0;
+        max-width: 880px;
+      }
+
+      .comm-features-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      /* Cartes inspirées du hero */
+      .comm-feature-card {
+        flex: 1;
+        min-width: 0;
+
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 20px 18px 20px;
+        text-align: left;
+
+        border: 1px solid rgba(79, 70, 229, 0.24);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+
+        opacity: 0;
+        transform: translateY(40px);
+        transition: opacity 0.35s ease-out, transform 0.35s ease-out,
+          box-shadow 0.2s ease-out, transform 0.2s ease-out;
+      }
+
+      .comm-feature-card.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (hover: hover) {
+        .comm-feature-card.is-visible:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 22px 55px rgba(15, 23, 42, 0.24);
+        }
+      }
+
+      .comm-feature-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        font-size: 20px;
+        margin-bottom: 12px;
+
+        background: linear-gradient(135deg, #4f46e5, #7c2bff);
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(79, 70, 229, 0.6);
+      }
+
+      .comm-feature-title {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 6px;
+        color: #020617;
+        letter-spacing: -0.02em;
+      }
+
+      .comm-feature-title span.highlight {
+        color: #4f46e5;
+      }
+
+      .comm-feature-text {
+        font-size: 14px;
+        color: #111827; /* noir/gris très foncé */
+        line-height: 1.55;
+      }
+
+      /* ---------- Responsive Communication ---------- */
+
+      @media (max-width: 900px) {
+        .comm-section {
+          height: auto;
+          padding: 60px 0 50px;
+        }
+
+        .comm-inner {
+          position: static;
+        }
+
+        .comm-features-row {
+          flex-direction: column;
+        }
+
+        .comm-feature-card {
+          border-radius: 20px;
+          padding: 18px 16px 18px;
+          opacity: 1;
+          transform: none;
+        }
+
+        /* taille du titre fixe sur tablette */
+        .comm-title {
+          font-size: 28px;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .comm-title {
+          font-size: 26px; /* pas d’animation, taille fixe sur mobile */
+        }
+
+        .comm-feature-title {
+          font-size: 16px;
+        }
+        .comm-feature-text {
+          font-size: 13px;
+        }
+      }
+
+      /* ===================== */
+      /* Section 500 points     */
+      /* ===================== */
+
+      .waitlist-section {
+        margin-top: 80px;
+        padding: 48px 0 56px;
+      }
+
+      .waitlist-inner {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 28px 28px 30px;
+        border-radius: 28px;
+
+        background: radial-gradient(
+            circle at top left,
+            rgba(79, 70, 229, 0.14),
+            transparent 55%
+          ),
+          #ffffff;
+
+        border: 1px solid rgba(79, 70, 229, 0.28);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 28px;
+      }
+
+      .waitlist-text {
+        max-width: 520px;
+        text-align: left;
+      }
+
+      .waitlist-title {
+        font-size: 30px;
+        line-height: 1.15;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        margin-bottom: 8px;
+      }
+
+      .waitlist-highlight {
+        color: #4f46e5;
+      }
+
+      .waitlist-subtitle {
+        font-size: 14px;
+        color: #4b5563;
+        line-height: 1.5;
+      }
+
+      .waitlist-cta {
+        text-align: right;
+        min-width: 260px;
+      }
+
+      .waitlist-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .waitlist-helper {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      /* ===================== */
+      /* Modal waitlist        */
+      /* ===================== */
+
+      .waitlist-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease-out;
+        z-index: 40;
+      }
+
+      .waitlist-modal-overlay.is-open {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .waitlist-modal {
+        position: relative;
+        max-width: 420px;
+        width: 100%;
+        border-radius: 24px;
+        padding: 24px 22px 22px;
+
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 30px 80px rgba(15, 23, 42, 0.5);
+      }
+
+      .waitlist-close {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        border: none;
+        background: transparent;
+        font-size: 18px;
+        cursor: pointer;
+        color: #6b7280;
+      }
+
+      .waitlist-close:hover {
+        color: #111827;
+      }
+
+      .waitlist-modal-title {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin-bottom: 6px;
+      }
+
+      .waitlist-modal-title span {
+        color: #4f46e5;
+      }
+
+      .waitlist-modal-subtitle {
+        font-size: 13px;
+        color: #4b5563;
+        margin-bottom: 16px;
+        line-height: 1.5;
+      }
+
+      .waitlist-form {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        margin-top: 4px;
+      }
+
+      .waitlist-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        text-align: left;
+      }
+
+      .waitlist-label {
+        font-size: 12px;
+        color: #6b7280;
+      }
+
+      .waitlist-field input {
+        border-radius: 999px;
+        border: 1px solid #e5e7eb;
+        padding: 10px 14px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+      }
+
+      .waitlist-field input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.4);
+      }
+
+      .waitlist-submit {
+        margin-top: 4px;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .waitlist-privacy {
+        margin-top: 6px;
+        font-size: 11px;
+        color: #9ca3af;
+        text-align: center;
+      }
+
+      /* --------- Responsive waitlist --------- */
+
+      @media (max-width: 900px) {
+        .waitlist-inner {
+          flex-direction: column;
+          align-items: flex-start;
+          text-align: left;
+        }
+
+        .waitlist-cta {
+          width: 100%;
+          text-align: left;
+        }
+
+        .waitlist-btn {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .waitlist-section {
+          margin-top: 56px;
+          padding: 40px 0 40px;
+        }
+
+        .waitlist-inner {
+          padding: 20px 18px 22px;
+          border-radius: 22px;
+        }
+
+        .waitlist-title {
+          font-size: 24px;
+        }
+
+        .waitlist-modal {
+          padding: 20px 18px 18px;
+          border-radius: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- HERO ---------------------------->
+      <section class="hero">
+        <h1 class="headline">
+          <span class="headline-main">Vos candidatures,</span>
+          <span class="headline-main">gérées automatiquement.</span>
+          <span class="headline-highlight">JobTrackAI analyse</span>
+          <span class="headline-highlight">et organise vos e-mails.</span>
+        </h1>
+
+        <div class="hero-actions">
+          <button class="btn-primary">
+            <span class="btn-icon">➜</span>
+            Commencer
+          </button>
+        </div>
+
+        <!-- Bulle assistant (desktop only) -->
+        <div class="info-card">
+          <span class="info-dot"></span>
+          <span class="info-text">
+            <strong>JobTrackAI</strong> devient votre assistant : il repère vos
+            candidatures et met vos statuts à jour automatiquement.
+          </span>
+        </div>
+
+        <div class="hero-visual">
+          <div class="hero-image-frame" id="parallaxImage">
+            <img
+              src="asset/image.png"
+              class="hero-image"
+              alt="Aperçu du tableau de bord JobTrackAI"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION : Communication / Features -->
+      <section class="comm-section" id="commSection">
+        <div class="comm-inner">
+          <h2 class="comm-title" id="commTitle">
+            Suivez vos candidatures <br />
+            sans effort avec JobTrackAI
+          </h2>
+
+          <div class="comm-card-shell">
+            <div class="comm-features-row">
+              <article class="comm-feature-card" data-step="1">
+                <span class="comm-feature-icon">📨</span>
+                <h3 class="comm-feature-title">
+                  Scan <span class="highlight">automatique</span> des e-mails
+                </h3>
+                <p class="comm-feature-text">
+                  JobTrackAI analyse votre boîte mail et détecte instantanément
+                  vos candidatures.
+                </p>
+              </article>
+
+              <article class="comm-feature-card" data-step="2">
+                <span class="comm-feature-icon">📊</span>
+                <h3 class="comm-feature-title">
+                  Suivi <span class="highlight">intelligent</span>
+                </h3>
+                <p class="comm-feature-text">
+                  Chaque candidature est suivie automatiquement : réponses,
+                  entretiens, offres et refus.
+                </p>
+              </article>
+
+              <article class="comm-feature-card" data-step="3">
+                <span class="comm-feature-icon">🕒</span>
+                <h3 class="comm-feature-title">
+                  Timeline des <span class="highlight">statuts</span>
+                </h3>
+                <p class="comm-feature-text">
+                  Visualisez l’historique complet : candidature envoyée,
+                  entretien, offre… tout au même endroit.
+                </p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION : 500 points offerts -->
+      <section class="waitlist-section">
+        <div class="waitlist-inner">
+          <div class="waitlist-text">
+            <h2 class="waitlist-title">
+              Recevez <span class="waitlist-highlight">500 points</span>
+              dès votre inscription.
+            </h2>
+            <p class="waitlist-subtitle">
+              Rejoignez JobTrackAI maintenant et laissez l’app suivre vos
+              candidatures à votre place.
+            </p>
+          </div>
+
+          <div class="waitlist-cta">
+            <button class="btn-primary waitlist-btn" id="waitlistOpenBtn">
+              <span class="btn-icon">➜</span>
+              <span>Activer mes 500 points</span>
+            </button>
+            <p class="waitlist-helper">
+              Pas de spam, juste une notification quand vos points sont prêts.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODAL : formulaire prénom + e-mail -->
+      <div class="waitlist-modal-overlay" id="waitlistModal" aria-hidden="true">
+        <div
+          class="waitlist-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="waitlistModalTitle"
+        >
+          <button
+            class="waitlist-close"
+            type="button"
+            id="waitlistCloseBtn"
+            aria-label="Fermer"
+          >
+            ✕
+          </button>
+
+          <h3 class="waitlist-modal-title" id="waitlistModalTitle">
+            Activez vos <span>500 points JobTrackAI</span>
+          </h3>
+          <p class="waitlist-modal-subtitle">
+            Entrez votre prénom et votre e-mail. Nous vous enverrons un accès
+            prioritaire avec vos points offerts.
+          </p>
+
+          <form class="waitlist-form" id="waitlistForm">
+            <label class="waitlist-field">
+              <span class="waitlist-label">Prénom</span>
+              <input
+                type="text"
+                name="firstName"
+                required
+                placeholder="Ex. Johann"
+              />
+            </label>
+
+            <label class="waitlist-field">
+              <span class="waitlist-label">E-mail</span>
+              <input
+                type="email"
+                name="email"
+                required
+                placeholder="vous@exemple.com"
+              />
+            </label>
+
+            <button class="btn-primary waitlist-submit" type="submit">
+              <span class="btn-icon">➜</span>
+              <span>Rejoindre JobTrackAI</span>
+            </button>
+
+            <p class="waitlist-privacy">
+              En vous inscrivant, vous acceptez de recevoir un e-mail lié à
+              votre compte JobTrackAI.
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- PARALLAX IMAGE ---------------- -->
+    <script>
+      const imgFrame = document.getElementById("parallaxImage");
+      const hero = document.querySelector(".hero");
+      let tickingParallax = false;
+
+      function updateParallax() {
+        if (!imgFrame || !hero) return;
+
+        const rect = imgFrame.getBoundingClientRect();
+        const viewportHeight =
+          window.innerHeight || document.documentElement.clientHeight;
+
+        const centerY = rect.top + rect.height / 2;
+        const delta = centerY - viewportHeight / 2;
+
+        let offset = -delta * 0.06;
+        if (offset > 16) offset = 16;
+        if (offset < -16) offset = -16;
+
+        imgFrame.style.transform = `translateY(${offset}px)`;
+        tickingParallax = false;
+      }
+
+      function onScrollParallax() {
+        if (!tickingParallax) {
+          window.requestAnimationFrame(updateParallax);
+          tickingParallax = true;
+        }
+      }
+
+      window.addEventListener("scroll", onScrollParallax, { passive: true });
+      updateParallax();
+    </script>
+
+    <!-- TITRE QUI GROSSIT (desktop uniquement) + FEATURES -->
+    <script>
+      (function () {
+        const title = document.getElementById("commTitle");
+        const section = document.getElementById("commSection");
+        const cards = Array.from(
+          document.querySelectorAll(".comm-feature-card")
+        );
+        if (!title || !section || cards.length === 0) return;
+
+        const desktopSizes = { min: 32, max: 54 };
+        const mobileSize = 26;
+
+        function isSmall() {
+          return window.matchMedia("(max-width: 600px)").matches;
+        }
+
+        let ticking = false;
+
+        function update() {
+          const small = isSmall();
+
+          if (small) {
+            // sur mobile : pas d’animation, taille fixe + cartes déjà visibles via CSS
+            title.style.fontSize = mobileSize + "px";
+            ticking = false;
+            return;
+          }
+
+          const rect = section.getBoundingClientRect();
+          const vh =
+            window.innerHeight || document.documentElement.clientHeight;
+
+          const center = rect.top + rect.height / 2;
+
+          const start = vh * 1.1;
+          const end = vh * 0.4;
+
+          let t = (start - center) / (start - end);
+          if (t < 0) t = 0;
+          if (t > 1) t = 1;
+
+          const { min, max } = desktopSizes;
+          const size = min + (max - min) * t;
+          title.style.fontSize = size + "px";
+
+          // apparition progressive des 3 cartes sur desktop
+          const thresholds = [0.1, 0.45, 1.0];
+
+          cards.forEach((card, index) => {
+            if (t >= thresholds[index]) {
+              card.classList.add("is-visible");
+            } else {
+              card.classList.remove("is-visible");
+            }
+          });
+
+          ticking = false;
+        }
+
+        function onScroll() {
+          if (!ticking) {
+            window.requestAnimationFrame(update);
+            ticking = true;
+          }
+        }
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", update);
+
+        update();
+      })();
+    </script>
+
+    <!-- MODAL 500 POINTS ---------------- -->
+    <script>
+      (function () {
+        const openBtn = document.getElementById("waitlistOpenBtn");
+        const modal = document.getElementById("waitlistModal");
+        const closeBtn = document.getElementById("waitlistCloseBtn");
+        const form = document.getElementById("waitlistForm");
+
+        if (!openBtn || !modal || !closeBtn || !form) return;
+
+        function openModal() {
+          modal.classList.add("is-open");
+          modal.setAttribute("aria-hidden", "false");
+          const firstInput = form.querySelector("input[name='firstName']");
+          if (firstInput) firstInput.focus();
+        }
+
+        function closeModal() {
+          modal.classList.remove("is-open");
+          modal.setAttribute("aria-hidden", "true");
+        }
+
+        openBtn.addEventListener("click", openModal);
+        closeBtn.addEventListener("click", closeModal);
+
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeModal();
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") closeModal();
+        });
+
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const data = new FormData(form);
+          const firstName = data.get("firstName");
+          const email = data.get("email");
+
+          console.log("Waitlist:", { firstName, email });
+          alert(
+            "Merci " +
+              firstName +
+              " ! Vos 500 points seront activés dès l'ouverture de JobTrackAI."
+          );
+          closeModal();
+          form.reset();
+        });
+      })();
+    </script>
+  </body>
+</html>

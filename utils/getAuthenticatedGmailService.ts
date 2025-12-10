@@ -1,23 +1,13 @@
-// src/utils/getAuthenticatedGmailService.ts
+// src/utils/getAuthenticatedGmailClient.ts
 import { createClient } from "@/utils/supabase/server";
 import { MailConnectionsService } from "@/services/MailConnectionsService";
-import { GmailApiService } from "@/services/gmailApiService";
+import { GmailClient } from "@/services/gmailClient";
 
-/**
- * getAuthenticatedGmailService
- * ───────────────────────────────────────────
- * Centralise l’authentification utilisateur + Gmail.
- * Retourne : { gmail, userId }
- *
- * Utilisation :
- *   const { gmail, userId } = await getAuthenticatedGmailService();
- *   const ids = await gmail.listEmailIdsByDateRange(start, end);
- */
-export async function getAuthenticatedGmailService(): Promise<{
-  gmail: GmailApiService;
+export async function getAuthenticatedGmailClient(): Promise<{
+  gmail: GmailClient;
   userId: string;
 }> {
-  // 1️ Authentification Supabase (serveur)
+  // 1) Auth Next + Supabase
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,7 +17,7 @@ export async function getAuthenticatedGmailService(): Promise<{
     throw new Error("Non autorisé. Veuillez vous reconnecter.");
   }
 
-  // 2️ Récupération du token Gmail via ton service de connexion
+  // 2) Récupérer un access_token Gmail via MailConnectionsService
   const mailConnections = new MailConnectionsService(user.id, "gmail");
 
   let accessToken: string;
@@ -35,7 +25,7 @@ export async function getAuthenticatedGmailService(): Promise<{
     accessToken = await mailConnections.getValidAccessToken();
   } catch (err) {
     console.error(
-      "[getAuthenticatedGmailService] Impossible d'obtenir un token Gmail:",
+      "[getAuthenticatedGmailClient] Impossible d'obtenir un token Gmail:",
       err
     );
     throw new Error(
@@ -43,8 +33,8 @@ export async function getAuthenticatedGmailService(): Promise<{
     );
   }
 
-  // 3️ Création du service Gmail prêt à l’emploi
-  const gmail = new GmailApiService(accessToken);
+  // 3) Créer le client Gmail prêt à l’emploi
+  const gmail = new GmailClient(accessToken);
 
   return { gmail, userId: user.id };
 }

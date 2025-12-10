@@ -1,154 +1,311 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import type {
-  ScanInitResponse,
-  ScanStartResponse,
-  ScanStopResponse,
-  ScanStatusResponse,
-  ScanErrorResponse,
-} from "@/types/scan";
+import { useRef, useState } from "react";
 
-type ApiSuccess = { success: true };
+export type JobEmailStatus =
+  | "applied"
+  | "in_review"
+  | "interview"
+  | "offer"
+  | "rejected"
+  | "manual";
 
-// Petit helper bien typé pour toutes les requêtes
-async function request<T extends ApiSuccess>(
-  url: string,
-  options?: RequestInit
-): Promise<T> {
-  const res = await fetch(url, options);
-  const json = (await res.json()) as T | ScanErrorResponse;
-
-  if (typeof json !== "object" || json === null || !("success" in json)) {
-    throw new Error("Réponse serveur invalide");
-  }
-
-  if (json.success === false) {
-    throw new Error(json.error);
-  }
-
-  return json as T;
+export interface PrepareResponse {
+  scanLogId: string;
+  messageIds: string[];
+  periodStartTs: number;
+  periodEndTs: number;
 }
 
-// Pour dériver proprement un scanId S'IL existe dans la réponse de status
-type StatusWithOptionalScanId = ScanStatusResponse & { scanId?: string };
+export interface BatchDetail {
+  messageId: string;
+  status: JobEmailStatus | null;
+  saved: boolean;
+}
 
-export function useScanFunctional() {
-  // On ne stocke que le STATUS, plus `loading` + `error`
-  const [status, setStatus] = useState<ScanStatusResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export interface BatchResponse {
+  processed: number;
+  saved: number;
+  details: BatchDetail[];
+}
 
-  // scanId devient une simple vue dérivée du dernier status
-  const scanId =
-    status && (status as StatusWithOptionalScanId).scanId
-      ? (status as StatusWithOptionalScanId).scanId!
-      : null;
+export type ScanPhase = "idle" | "preparing" | "running" | "done" | "error";
 
-  // ------------------------------------------------------
-  // INIT SCAN : crée un nouveau log "pending" pour l'user
-  // ------------------------------------------------------
-  const initScan = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+const BATCH_SIZE = 20;
+
+interface ScanContext {
+  scanLogId: string | null;
+  periodStartTs: number | null;
+  periodEndTs: number | null;
+}
+
+interface ScanProgress {
+  total: number;
+  processed: number;
+  saved: number;
+  currentIndex: number;
+  batchSize: number;
+}
+
+interface ScanFlags {
+  cancelRequested: boolean;
+}
+
+interface ScanData {
+  messageIds: string[];
+  lastBatch: BatchResponse | null;
+}
+
+interface ScanState {
+  phase: ScanPhase;
+  context: ScanContext;
+  progress: ScanProgress;
+  flags: ScanFlags;
+  data: ScanData;
+  error: string | null;
+}
+
+const initialState: ScanState = {
+  phase: "idle",
+  context: {
+    scanLogId: null,
+    periodStartTs: null,
+    periodEndTs: null,
+  },
+  progress: {
+    total: 0,
+    processed: 0,
+    saved: 0,
+    currentIndex: 0,
+    batchSize: BATCH_SIZE,
+  },
+  flags: {
+    cancelRequested: false,
+  },
+  data: {
+    messageIds: [],
+    lastBatch: null,
+  },
+  error: null,
+};
+
+export function useScan() {
+  const [state, setState] = useState<ScanState>(initialState);
+  const cancelRef = useRef(false);
+
+  const progressPercent =
+    state.progress.total > 0
+      ? Math.round((state.progress.processed / state.progress.total) * 100)
+      : 0;
+
+  // ─────────────────────────────────────────────
+  //  ACTIONS
+  // ─────────────────────────────────────────────
+
+  async function startScan() {
+    setState(() => ({
+      ...initialState,
+      phase: "preparing",
+    }));
+    cancelRef.current = false;
 
     try {
-      const data = await request<ScanInitResponse>("/api/scan/init", {
+      const res = await fetch("/api/scan/prepare-v2");
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(
+          `Erreur /api/scan/prepare-v2 (${res.status}) : ${text || "Unknown"}`
+        );
+      }
+
+      const data = (await res.json()) as PrepareResponse;
+
+      // Aucun mail à traiter pour cette période
+      if (!data.messageIds || data.messageIds.length === 0) {
+        setState((prev) => ({
+          ...prev,
+          phase: "done",
+          context: {
+            scanLogId: data.scanLogId ?? null,
+            periodStartTs: data.periodStartTs ?? null,
+            periodEndTs: data.periodEndTs ?? null,
+          },
+          progress: {
+            ...prev.progress,
+            total: 0,
+            processed: 0,
+            saved: 0,
+            currentIndex: 0,
+          },
+          data: {
+            ...prev.data,
+            messageIds: [],
+          },
+        }));
+        return;
+      }
+
+      // On a des messages → on passe en running et on lance le premier batch
+      setState((prev) => ({
+        ...prev,
+        phase: "running",
+        context: {
+          scanLogId: data.scanLogId,
+          periodStartTs: data.periodStartTs,
+          periodEndTs: data.periodEndTs,
+        },
+        progress: {
+          ...prev.progress,
+          total: data.messageIds.length,
+          processed: 0,
+          saved: 0,
+          currentIndex: 0,
+        },
+        data: {
+          ...prev.data,
+          messageIds: data.messageIds,
+        },
+        error: null,
+      }));
+
+      await runNextBatch(data.messageIds, 0, data.scanLogId);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Erreur inconnue (prepare)";
+      console.error("[useScan] startScan error:", err);
+      setState((prev) => ({
+        ...prev,
+        phase: "error",
+        error: msg,
+      }));
+    }
+  }
+
+  async function runNextBatch(
+    ids: string[],
+    startIndex: number,
+    scanLogId: string | null
+  ): Promise<void> {
+    // Vérifier si on doit stopper
+    if (cancelRef.current) {
+      setState((prev) => ({
+        ...prev,
+        phase: "idle",
+        flags: { ...prev.flags, cancelRequested: true },
+      }));
+      return;
+    }
+
+    if (startIndex >= ids.length) {
+      // Tous les IDs ont été traités
+      setState((prev) => ({
+        ...prev,
+        phase: "done",
+      }));
+      // Le backend se charge de passer le scan_log à "completed"
+      return;
+    }
+
+    const batch = ids.slice(startIndex, startIndex + BATCH_SIZE);
+
+    try {
+      const res = await fetch("/api/scan/batch", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          messageIds: batch,
+          scanLogId, // utilisé côté backend pour mettre à jour le bon scan_log
+        }),
       });
 
-      // Ici tu peux éventuellement faire un getStatus() derrière si tu veux
-      // synchroniser tout de suite `status` avec le backend.
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-      throw err;
-    } finally {
-      setLoading(false);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(
+          `Erreur /api/scan/batch (${res.status}) : ${text || "Unknown"}`
+        );
+      }
+
+      const data = (await res.json()) as BatchResponse;
+
+      setState((prev) => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          lastBatch: data,
+        },
+        progress: {
+          ...prev.progress,
+          processed: prev.progress.processed + data.processed,
+          saved: prev.progress.saved + data.saved,
+          currentIndex: startIndex + batch.length,
+        },
+      }));
+
+      if (!cancelRef.current) {
+        await runNextBatch(ids, startIndex + BATCH_SIZE, scanLogId);
+      } else {
+        setState((prev) => ({
+          ...prev,
+          phase: "idle",
+          flags: { ...prev.flags, cancelRequested: true },
+        }));
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Erreur inconnue (batch)";
+      console.error("[useScan] runNextBatch error:", err);
+      setState((prev) => ({
+        ...prev,
+        phase: "error",
+        error: msg,
+      }));
     }
-  }, []);
+  }
 
-  // ------------------------------------------------------
-  // START SCAN : agit sur le scan "pending" côté backend
-  // ➜ Aucun scanId envoyé, le backend sait quel scan prendre
-  // ------------------------------------------------------
-  const startScan = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  function stopScan() {
+    cancelRef.current = true;
+    setState((prev) => ({
+      ...prev,
+      flags: { ...prev.flags, cancelRequested: true },
+    }));
+  }
 
-    try {
-      const data = await request<ScanStartResponse>("/api/scan/start", {
-        method: "POST",
-      });
+  function resetScan() {
+    cancelRef.current = false;
+    setState(initialState);
+  }
 
-      // Optionnel : tu peux ici appeler getStatus() pour rafraîchir
-      // mais je garde le hook pur (pas d'appel imbriqué).
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // ─────────────────────────────────────────────
+  //  API du hook : peu de champs, bien groupés
+  // ─────────────────────────────────────────────
 
-  // ------------------------------------------------------
-  // STOP SCAN : arrête le scan actif de l'utilisateur
-  // ------------------------------------------------------
-  const stopScan = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const { phase, context, progress, flags, data, error } = state;
 
-    try {
-      const data = await request<ScanStopResponse>("/api/scan/stop", {
-        method: "POST",
-      });
-
-      // Tu peux décider ici de ne PAS reset le status tout de suite,
-      // et laisser getStatus() dire "interrupted" au prochain poll.
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // ------------------------------------------------------
-  // GET STATUS : demande au backend "c'est quoi l'état ?"
-  // ➜ Pas de scanId, c'est le backend qui trouve le bon log
-  // ------------------------------------------------------
-  const getStatus = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const data = await request<ScanStatusResponse>("/api/scan/status");
-
-      // Exemple de contrat possible côté backend :
-      // - success: true
-      // - status: "none" | "pending" | "running" | "completed" | ...
-      // - (optionnel) scanId: string
-      setStatus(data);
-
-      return data;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const debug = {
+    messageIdsPreview: data.messageIds.slice(0, 20),
+    messageIdsTotal: data.messageIds.length,
+  };
 
   return {
-    scanId,
-    status,
-    loading,
+    phase,
+    isIdle: phase === "idle",
+    isPreparing: phase === "preparing",
+    isRunning: phase === "running",
+    isDone: phase === "done",
+    context,
+    progress: {
+      ...progress,
+      percent: progressPercent,
+    },
+    flags,
+    lastBatch: data.lastBatch,
     error,
-    initScan,
-    startScan,
-    stopScan,
-    getStatus,
+    debug,
+    actions: {
+      startScan,
+      stopScan,
+      resetScan,
+    },
   };
 }
