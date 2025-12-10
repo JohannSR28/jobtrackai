@@ -100,7 +100,6 @@ export default function AuthUserFunctionalityPage() {
                 "—"
               )}
             </li>
-            <li>Dernier scan : {profile.last_scan_at ?? "Jamais"}</li>
             <li>Créé le : {profile.created_at}</li>
           </ul>
         ) : (
