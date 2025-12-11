@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { redirect } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useRouter } from "next/navigation";
@@ -12,7 +11,7 @@ export default function AuthUserFunctionalityPage() {
   const { user, logout, deleteAccount } = useAuth();
   const { profile, loading, error } = useProfile(user?.id ?? null);
 
-  if (!user) redirect("/auth/login");
+  if (!user) router.push("/auth/login");
 
   const [status, setStatus] = useState<Record<string, boolean>>({});
 
