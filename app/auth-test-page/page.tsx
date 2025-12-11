@@ -4,9 +4,11 @@ import { useState } from "react";
 import { redirect } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useRouter } from "next/navigation";
 import GoToMainButton from "@/components/go-to-main";
 
 export default function AuthUserFunctionalityPage() {
+  const router = useRouter();
   const { user, logout, deleteAccount } = useAuth();
   const { profile, loading, error } = useProfile(user?.id ?? null);
 
@@ -17,16 +19,17 @@ export default function AuthUserFunctionalityPage() {
   const testLogout = async () => {
     await logout();
     setStatus((prev) => ({ ...prev, logout: true }));
-    redirect("/auth/login");
+    router.push("/auth/login");
   };
 
   const testDelete = async () => {
-    if (confirm("Supprimer le compte ?")) {
-      await deleteAccount();
-      await logout();
-      setStatus((prev) => ({ ...prev, deleteAccount: true }));
-      redirect("/auth/login");
-    }
+    if (!confirm("Supprimer le compte ?")) return;
+
+    await deleteAccount();
+    await logout();
+    setStatus((prev) => ({ ...prev, deleteAccount: true }));
+
+    router.push("/auth/login");
   };
 
   return (
