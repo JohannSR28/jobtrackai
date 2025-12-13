@@ -89,6 +89,9 @@ export function AuthProvider({
       provider: "google",
       options: {
         redirectTo,
+        queryParams: {
+          prompt: "select_account", // <-- force le choix du compte
+        },
       },
     });
 
