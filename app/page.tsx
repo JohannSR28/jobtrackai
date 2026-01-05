@@ -1,51 +1,46 @@
 "use client";
-
-import { useRouter } from "next/navigation";
-
-const LINKS = [
-  { label: "Landing Page", href: "/landing-page" },
-  { label: "Auth Test Page", href: "/auth-test-page" },
-  { label: "Connexion à la boîte mail", href: "/mail-connection" },
-  { label: "Scan & Analyse automatique", href: "/scan-and-analyze" },
-  { label: "Test Crédit", href: "/credits-test" },
-  { label: "Test Candidatures", href: "/application-test" },
-];
+import Link from "next/link";
 
 export default function HomePage() {
-  const router = useRouter();
-
   return (
     <main className="min-h-screen bg-slate-100 flex items-center justify-center px-4">
-      <div className="w-full max-w-lg space-y-6 text-center">
+      <div className="w-full max-w-lg space-y-8 text-center">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">
+          <h1 className="text-4xl font-bold text-slate-900">
             Welcome to JobTrackAI
           </h1>
-          <p className="mt-2 text-sm sm:text-base text-slate-500">
+          <p className="mt-4 text-slate-600">
             Choisis une action pour tester rapidement les différentes
-            fonctionnalités de l’application.
+            fonctionnalités de l&apos;application.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {LINKS.map((link) => (
-            <button
-              key={link.href}
-              type="button"
-              onClick={() => router.push(link.href)}
-              className="
-                w-full rounded-lg bg-blue-600 px-4 py-3 text-sm sm:text-base
-                font-medium text-white shadow-md
-                transition
-                hover:bg-blue-700
-                active:scale-95
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                text-center
-              "
-            >
-              {link.label}
-            </button>
-          ))}
+        <div className="flex flex-col gap-3">
+          <Link
+            href="/landing-page"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition"
+          >
+            Go to Landing Page
+          </Link>
+          <Link
+            href="/auth-test-page"
+            className="px-6 py-3 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-800 transition"
+          >
+            Go to Auth Test Page
+          </Link>
+
+          <Link
+            href="/mail-connection-test-page"
+            className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition"
+          >
+            Go to Mail Connection Test Page
+          </Link>
+          <Link
+            href="/scan-test-page"
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition"
+          >
+            Go to Scan Test Page
+          </Link>
         </div>
       </div>
     </main>

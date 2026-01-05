@@ -1,3 +1,4 @@
+// src/app/api/scan/pause/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 
@@ -26,17 +27,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "MISSING_SCAN_ID" }, { status: 400 });
   }
 
-  const scanRepo = new ScanRepository(supabase);
-  const scanService = new ScanService(scanRepo, 10);
-
   try {
-    const { scan } = await scanService.runBatch(user.id, body.scanId);
+    const scanRepo = new ScanRepository(supabase);
+    const scanService = new ScanService(scanRepo, 10);
+
+    const { scan } = await scanService.pause(user.id, body.scanId);
     return NextResponse.json({ scan }, { status: 200 });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : "UNKNOWN_ERROR";
-    return NextResponse.json(
-      { error: "INTERNAL_ERROR", details: msg },
-      { status: 500 }
-    );
+    if (e instanceof Error && e.message === "SCAN_NOT_FOUND") {
+      return NextResponse.json({ error: "SCAN_NOT_FOUND" }, { status: 404 });
+    }
+    console.error("[POST /api/scan/pause] failed", e);
+    return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
 }
