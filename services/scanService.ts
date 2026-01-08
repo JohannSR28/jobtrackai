@@ -1,3 +1,25 @@
+// src/services/scanService.ts
+
+// Ajoute ces imports en haut
+import type { RawMail, MailAnalysisService } from "@/services/ai/mailAnalysis";
+import type { AnalysisFileWriter } from "@/infra/logging/analysisFileWriter";
+
+export interface MailReaderApi {
+  getRawMailById(
+    userId: string,
+    provider: MailProvider,
+    messageId: string
+  ): Promise<RawMail>;
+}
+// Ajoute une interface SANS toucher Module 4 :
+export interface MailReaderApi {
+  getRawMailById(
+    userId: string,
+    provider: MailProvider,
+    messageId: string
+  ): Promise<RawMail>;
+}
+
 export type MailProvider = "gmail" | "outlook";
 
 export type ScanStatus =
@@ -15,7 +37,10 @@ export type Scan = {
 
   status: ScanStatus;
 
-  messageIds: string[] | null; // présent tant que actif
+  rangeStartAt: string; // ISO
+  rangeEndAt: string; // ISO
+  cursorAt: string; // ISO
+
   processedCount: number;
   totalCount: number;
 
@@ -26,7 +51,36 @@ export type Scan = {
   updatedAt?: string;
 };
 
-export type InitResult = { mode: "existing" | "new"; scan: Scan };
+export type ScanRangeRules = { maxDays: number; maxMessages: number };
+
+export type ValidateRangeResult =
+  | {
+      ok: true;
+      start: string; // ISO
+      end: string; // ISO
+      days: number;
+      count: number; // exact <= 2000
+      ids: string[]; // exact list <= 2000 (utile pour debug, mais pas stocké en DB)
+    }
+  | {
+      ok: false;
+      reason: "RANGE_TOO_LARGE" | "TOO_MANY_MESSAGES" | "INVALID_RANGE";
+      details?: string;
+      start?: string;
+      end?: string;
+      days?: number;
+      count?: number; // ex 2001 => ">2000"
+    };
+
+export type InitInput =
+  | { mode: "since_last"; endIso?: string }
+  | { mode: "custom"; startIso: string; endIso: string };
+
+export type InitResult =
+  | { mode: "existing"; scan: Scan }
+  | { mode: "new"; scan: Scan }
+  | { mode: "invalid"; validation: Exclude<ValidateRangeResult, { ok: true }> };
+
 export type BatchResult = { scan: Scan };
 
 export interface ScanRepository {
@@ -37,7 +91,11 @@ export interface ScanRepository {
     userId: string;
     provider: MailProvider;
     status: ScanStatus;
-    messageIds: string[] | null;
+
+    rangeStartAt: string;
+    rangeEndAt: string;
+    cursorAt: string;
+
     processedCount: number;
     totalCount: number;
     shouldContinue: boolean;
@@ -48,7 +106,11 @@ export interface ScanRepository {
     scanId: string,
     patch: Partial<{
       status: ScanStatus;
-      messageIds: string[] | null;
+
+      rangeStartAt: string;
+      rangeEndAt: string;
+      cursorAt: string;
+
       processedCount: number;
       totalCount: number;
       shouldContinue: boolean;
@@ -66,60 +128,150 @@ export interface ScanRepository {
   ): Promise<Scan>;
 }
 
-function normalizeBatchSize(n: number): number {
-  const x = Number.isFinite(n) ? Math.floor(n) : 10;
-  return Math.max(1, Math.min(100, x));
+export type MailCheckpoint = {
+  userId: string;
+  provider: MailProvider;
+  lastSuccessAt: string | null; // ISO
+};
+
+export interface MailCheckpointRepository {
+  get(userId: string, provider: MailProvider): Promise<MailCheckpoint | null>;
+  upsertLastSuccessAt(
+    userId: string,
+    provider: MailProvider,
+    lastSuccessAt: string
+  ): Promise<void>;
+}
+
+/**
+ * Ce que le service attend du "Provider layer"
+ * (tu as déjà validateRange + getAllMessageIdsInRange)
+ */
+export interface MailProviderApi {
+  validateRange(
+    startIso: string,
+    endIso: string,
+    rules: ScanRangeRules
+  ): Promise<ValidateRangeResult>;
+
+  getAllMessageIdsInRange(input: {
+    startIso: string;
+    endIso: string;
+    maxMessages: number; // ici on peut mettre 2000 (ou un cap par batch si tu veux)
+  }): Promise<
+    { ok: true; ids: string[] } | { ok: false; reason: "TOO_MANY_MESSAGES" }
+  >;
 }
 
 function isFinal(status: ScanStatus): boolean {
   return status === "completed" || status === "canceled" || status === "failed";
 }
 
+function addHoursIso(iso: string, hours: number): string {
+  const d = new Date(iso);
+  d.setHours(d.getHours() + hours);
+  return d.toISOString();
+}
+
+function minIso(aIso: string, bIso: string): string {
+  return new Date(aIso) <= new Date(bIso) ? aIso : bIso;
+}
+
+function daysBetweenCeil(startIso: string, endIso: string): number {
+  const s = new Date(startIso).getTime();
+  const e = new Date(endIso).getTime();
+  return Math.ceil((e - s) / (24 * 3600 * 1000));
+}
+
+function normalizeIsoRange(startIso: string, endIso: string) {
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  if (!Number.isFinite(s.getTime()) || !Number.isFinite(e.getTime())) {
+    return { ok: false as const, error: "INVALID_DATE" };
+  }
+  if (e <= s) return { ok: false as const, error: "END_BEFORE_START" };
+  return { ok: true as const, start: s.toISOString(), end: e.toISOString() };
+}
+
 export class ScanService {
-  constructor(private scans: ScanRepository, private readonly batchSize = 10) {}
+  private readonly rules: ScanRangeRules;
+  private readonly batchHours: number;
+
+  constructor(
+    private scans: ScanRepository,
+    private checkpoints: MailCheckpointRepository,
+    private providerApi: MailProviderApi,
+
+    // nouveaux ajouts pour Module 5
+    private mailReader: MailReaderApi,
+    private mailAnalysis: MailAnalysisService,
+    private analysisWriter: AnalysisFileWriter,
+    // fin nouveaux ajouts
+
+    opts?: {
+      rules?: ScanRangeRules; // default {90,2000}
+      batchHours?: number; // default 24
+      sinceLastFallbackDays?: number; // default 7
+    }
+  ) {
+    this.rules = opts?.rules ?? { maxDays: 90, maxMessages: 2000 };
+    this.batchHours = opts?.batchHours ?? 24;
+    this.sinceLastFallbackDays = opts?.sinceLastFallbackDays ?? 7;
+  }
+
+  private readonly sinceLastFallbackDays: number;
 
   /**
-   * init: si scan actif -> existing
-   * sinon crée un scan "created" avec messageIds (déjà récupérés par l'endpoint)
+   * INIT (v4)
+   * - résout les dates (since_last via checkpoint)
+   * - validate range via provider
+   * - crée scan (sans message_ids)
    */
   async init(
     userId: string,
     provider: MailProvider,
-    messageIds: string[]
+    input: InitInput
   ): Promise<InitResult> {
     const active = await this.scans.findActiveScan(userId);
     if (active) return { mode: "existing", scan: active };
 
-    const totalCount = messageIds.length;
-    const shouldContinue = totalCount > 0;
+    const resolved = await this.resolveRange(userId, provider, input);
+    if (!resolved.ok) {
+      return { mode: "invalid", validation: resolved.validation };
+    }
+
+    const { startIso, endIso, totalCount } = resolved;
 
     const created = await this.scans.create({
       userId,
       provider,
       status: "created",
-      messageIds,
+
+      rangeStartAt: startIso,
+      rangeEndAt: endIso,
+      cursorAt: startIso, // ✅ pas arrondi: curseur exact
+
       processedCount: 0,
       totalCount,
-      shouldContinue,
+      shouldContinue: totalCount > 0,
     });
 
     return { mode: "new", scan: created };
   }
 
+  /**
+   * RUN BATCH (v4)
+   * - fenêtre glissante: [cursorAt, min(cursorAt+24h, rangeEndAt)]
+   * - fetch ids via providerApi
+   * - traitement fictif
+   * - update cursorAt + processedCount
+   * - finalize + update checkpoint si terminé
+   */
   async runBatch(userId: string, scanId: string): Promise<BatchResult> {
     const scan = await this.mustGetScan(userId, scanId);
 
     // Déjà final => no-op
     if (isFinal(scan.status)) return { scan };
-
-    // On doit avoir les IDs tant que scan actif
-    if (!scan.messageIds) {
-      const failed = await this.scans.finalize(userId, scanId, {
-        finalStatus: "failed",
-        errorMessage: "MISSING_MESSAGE_IDS",
-      });
-      return { scan: failed };
-    }
 
     // Reprise auto
     if (scan.status === "paused" || scan.status === "created") {
@@ -129,61 +281,119 @@ export class ScanService {
     const running = await this.mustGetScan(userId, scanId);
     if (running.status !== "running") return { scan: running };
 
-    if (!running.messageIds) {
-      const failed = await this.scans.finalize(userId, scanId, {
-        finalStatus: "failed",
-        errorMessage: "MISSING_MESSAGE_IDS",
-      });
-      return { scan: failed };
-    }
-
-    const size = normalizeBatchSize(this.batchSize);
-    const start = Math.max(0, running.processedCount);
-    const end = Math.min(start + size, running.totalCount);
-
-    const slice = running.messageIds.slice(start, end);
-
-    //  Si plus rien à traiter => on termine en forçant processedCount=totalCount
-    if (slice.length === 0) {
+    // Terminé ?
+    if (new Date(running.cursorAt) >= new Date(running.rangeEndAt)) {
+      // assure cohérence progress
       await this.scans.update(userId, scanId, {
         processedCount: running.totalCount,
         shouldContinue: false,
       });
+
       const finalized = await this.scans.finalize(userId, scanId, {
         finalStatus: "completed",
       });
+
+      // ✅ checkpoint sur range_end_at
+      await this.checkpoints.upsertLastSuccessAt(
+        userId,
+        running.provider,
+        running.rangeEndAt
+      );
+
       return { scan: finalized };
     }
 
+    // Fenêtre batch (24h glissante)
+    const windowStart = running.cursorAt;
+    const windowEnd = minIso(
+      addHoursIso(windowStart, this.batchHours),
+      running.rangeEndAt
+    );
+
     try {
-      // v0: traitement fictif
-      for (const _id of slice) {
-        console.log("Processing message id:", _id);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+      // Fetch IDs de la fenêtre
+      const idsOut = await this.providerApi.getAllMessageIdsInRange({
+        startIso: windowStart,
+        endIso: windowEnd,
+        maxMessages: this.rules.maxMessages, // safe cap
+      });
+
+      if (!idsOut.ok) {
+        // Cas extrême: trop d'IDs dans un seul batch (fenêtre)
+        const failed = await this.scans.finalize(userId, scanId, {
+          finalStatus: "failed",
+          errorMessage: "TOO_MANY_MESSAGES_IN_BATCH",
+        });
+        return { scan: failed };
       }
 
-      const newProcessed = start + slice.length;
-      const done = newProcessed >= running.totalCount;
+      const ids = idsOut.ids;
 
-      //  Si terminé => update processedCount/shouldContinue puis finalize
-      if (done) {
-        await this.scans.update(userId, scanId, {
-          processedCount: running.totalCount,
-          shouldContinue: false,
+      // v0: Réel traitement AI
+      for (const id of ids) {
+        console.log("Processing message id:", id);
+
+        const rawMail = await this.mailReader.getRawMailById(
+          userId,
+          running.provider,
+          id
+        );
+        const analysis = await this.mailAnalysis.analyzeMail(rawMail);
+
+        console.log("AI:", {
+          id,
+          isJobRelated: analysis.isJobRelated,
+          status: analysis.status,
+          company: analysis.company,
+          position: analysis.position,
+          confidence: analysis.confidence,
+          tokensUsed: analysis.tokensUsed,
         });
 
-        const completed = await this.scans.finalize(userId, scanId, {
+        await this.analysisWriter.appendLine(
+          JSON.stringify({
+            at: new Date().toISOString(),
+            scanId,
+            provider: running.provider,
+            messageId: id,
+            isJobRelated: analysis.isJobRelated,
+            status: analysis.status,
+            company: analysis.company,
+            position: analysis.position,
+            confidence: analysis.confidence,
+            tokensUsed: analysis.tokensUsed,
+          })
+        );
+      }
+
+      // Update progress
+      const newProcessed = Math.min(
+        running.totalCount,
+        Math.max(0, running.processedCount) + ids.length
+      );
+
+      const shouldContinue = new Date(windowEnd) < new Date(running.rangeEndAt);
+
+      const updated = await this.scans.update(userId, scanId, {
+        cursorAt: windowEnd,
+        processedCount: newProcessed,
+        shouldContinue,
+      });
+
+      if (!shouldContinue) {
+        const finalized = await this.scans.finalize(userId, scanId, {
           finalStatus: "completed",
         });
 
-        return { scan: completed };
-      }
+        // checkpoint sur range_end_at (pas cursor)
+        await this.checkpoints.upsertLastSuccessAt(
+          userId,
+          running.provider,
+          running.rangeEndAt
+        );
 
-      // Sinon => batch partiel
-      const updated = await this.scans.update(userId, scanId, {
-        processedCount: newProcessed,
-        shouldContinue: true,
-      });
+        return { scan: finalized };
+      }
 
       return { scan: updated };
     } catch (e) {
@@ -208,10 +418,103 @@ export class ScanService {
   async cancel(userId: string, scanId: string): Promise<{ scan: Scan }> {
     const scan = await this.mustGetScan(userId, scanId);
     if (isFinal(scan.status)) return { scan };
+
     const canceled = await this.scans.finalize(userId, scanId, {
       finalStatus: "canceled",
     });
+
+    // ❌ pas de checkpoint update si canceled
     return { scan: canceled };
+  }
+
+  // ----------------- internals -----------------
+
+  private async resolveRange(
+    userId: string,
+    provider: MailProvider,
+    input: InitInput
+  ): Promise<
+    | { ok: true; startIso: string; endIso: string; totalCount: number }
+    | { ok: false; validation: Exclude<ValidateRangeResult, { ok: true }> }
+  > {
+    let startRaw: string;
+    let endRaw: string;
+
+    if (input.mode === "custom") {
+      const norm = normalizeIsoRange(input.startIso, input.endIso);
+      if (!norm.ok) {
+        return {
+          ok: false,
+          validation: {
+            ok: false,
+            reason: "INVALID_RANGE",
+            details: norm.error,
+          },
+        };
+      }
+      startRaw = norm.start;
+      endRaw = norm.end;
+    } else {
+      // since_last : checkpoint.last_success_at ou fallback now-7days
+      const checkpoint = await this.checkpoints.get(userId, provider);
+      const endIso = input.endIso
+        ? new Date(input.endIso).toISOString()
+        : new Date().toISOString();
+
+      const startIso = checkpoint?.lastSuccessAt
+        ? new Date(checkpoint.lastSuccessAt).toISOString()
+        : (() => {
+            const d = new Date();
+            d.setDate(d.getDate() - this.sinceLastFallbackDays);
+            return d.toISOString();
+          })();
+
+      const norm = normalizeIsoRange(startIso, endIso);
+      if (!norm.ok) {
+        return {
+          ok: false,
+          validation: {
+            ok: false,
+            reason: "INVALID_RANGE",
+            details: norm.error,
+          },
+        };
+      }
+      startRaw = norm.start;
+      endRaw = norm.end;
+    }
+
+    // validation provider (<=90j, <=2000)
+    // (tu peux aussi vérifier days ici côté service pour early fail)
+    const days = daysBetweenCeil(startRaw, endRaw);
+    if (days > this.rules.maxDays) {
+      return {
+        ok: false,
+        validation: {
+          ok: false,
+          reason: "RANGE_TOO_LARGE",
+          start: startRaw,
+          end: endRaw,
+          days,
+        },
+      };
+    }
+
+    const validation = await this.providerApi.validateRange(
+      startRaw,
+      endRaw,
+      this.rules
+    );
+    if (!validation.ok) {
+      return { ok: false, validation };
+    }
+
+    return {
+      ok: true,
+      startIso: validation.start,
+      endIso: validation.end,
+      totalCount: validation.count,
+    };
   }
 
   private async mustGetScan(userId: string, scanId: string): Promise<Scan> {

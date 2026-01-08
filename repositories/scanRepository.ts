@@ -12,7 +12,10 @@ type ScanRow = {
   provider: MailProvider;
   status: ScanStatus;
 
-  message_ids: unknown | null; // jsonb
+  range_start_at: string;
+  range_end_at: string;
+  cursor_at: string;
+
   processed_count: number;
   total_count: number;
   should_continue: boolean;
@@ -23,39 +26,39 @@ type ScanRow = {
   updated_at: string;
 };
 
-function isStringArray(v: unknown): v is string[] {
-  return Array.isArray(v) && v.every((x) => typeof x === "string");
-}
-
 function mapRow(r: ScanRow): Scan {
-  const ids = r.message_ids;
-
-  // On accepte jsonb sous forme:
-  // - ["id1","id2",...]
-  // (si tu as une autre forme plus tard, on adaptera)
-  const messageIds: string[] | null = isStringArray(ids) ? ids : null;
-
   return {
     id: r.id,
     userId: r.user_id,
     provider: r.provider,
     status: r.status,
-    messageIds,
+
+    rangeStartAt: r.range_start_at,
+    rangeEndAt: r.range_end_at,
+    cursorAt: r.cursor_at,
+
     processedCount: r.processed_count,
     totalCount: r.total_count,
     shouldContinue: r.should_continue,
+
     errorMessage: r.error_message,
+
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
 }
 
-type ScanUpdatePatch = Partial<{
+type ScanUpdatePatchDb = Partial<{
   status: ScanStatus;
-  message_ids: string[] | null;
+
+  range_start_at: string;
+  range_end_at: string;
+  cursor_at: string;
+
   processed_count: number;
   total_count: number;
   should_continue: boolean;
+
   error_message: string | null;
 }>;
 
@@ -74,6 +77,7 @@ export class ScanRepository implements IScanRepository {
 
     if (error) throw error;
     if (!data) return null;
+
     return mapRow(data as unknown as ScanRow);
   }
 
@@ -87,6 +91,7 @@ export class ScanRepository implements IScanRepository {
 
     if (error) throw error;
     if (!data) return null;
+
     return mapRow(data as unknown as ScanRow);
   }
 
@@ -94,7 +99,11 @@ export class ScanRepository implements IScanRepository {
     userId: string;
     provider: MailProvider;
     status: ScanStatus;
-    messageIds: string[] | null;
+
+    rangeStartAt: string;
+    rangeEndAt: string;
+    cursorAt: string;
+
     processedCount: number;
     totalCount: number;
     shouldContinue: boolean;
@@ -105,7 +114,11 @@ export class ScanRepository implements IScanRepository {
         user_id: input.userId,
         provider: input.provider,
         status: input.status,
-        message_ids: input.messageIds,
+
+        range_start_at: input.rangeStartAt,
+        range_end_at: input.rangeEndAt,
+        cursor_at: input.cursorAt,
+
         processed_count: input.processedCount,
         total_count: input.totalCount,
         should_continue: input.shouldContinue,
@@ -122,22 +135,33 @@ export class ScanRepository implements IScanRepository {
     scanId: string,
     patch: Partial<{
       status: ScanStatus;
-      messageIds: string[] | null;
+
+      rangeStartAt: string;
+      rangeEndAt: string;
+      cursorAt: string;
+
       processedCount: number;
       totalCount: number;
       shouldContinue: boolean;
+
       errorMessage: string | null;
     }>
   ): Promise<Scan> {
-    const dbPatch: ScanUpdatePatch = {};
+    const dbPatch: ScanUpdatePatchDb = {};
 
     if (patch.status !== undefined) dbPatch.status = patch.status;
-    if (patch.messageIds !== undefined) dbPatch.message_ids = patch.messageIds;
+
+    if (patch.rangeStartAt !== undefined)
+      dbPatch.range_start_at = patch.rangeStartAt;
+    if (patch.rangeEndAt !== undefined) dbPatch.range_end_at = patch.rangeEndAt;
+    if (patch.cursorAt !== undefined) dbPatch.cursor_at = patch.cursorAt;
+
     if (patch.processedCount !== undefined)
       dbPatch.processed_count = patch.processedCount;
     if (patch.totalCount !== undefined) dbPatch.total_count = patch.totalCount;
     if (patch.shouldContinue !== undefined)
       dbPatch.should_continue = patch.shouldContinue;
+
     if (patch.errorMessage !== undefined)
       dbPatch.error_message = patch.errorMessage;
 
@@ -161,18 +185,17 @@ export class ScanRepository implements IScanRepository {
       errorMessage?: string;
     }
   ): Promise<Scan> {
-    // 1) on lit le scan pour connaître total_count
     const current = await this.getByIdForUser(userId, scanId);
     if (!current) throw new Error("SCAN_NOT_FOUND");
 
-    const patch: ScanUpdatePatch = {
+    const patch: ScanUpdatePatchDb = {
       status: input.finalStatus,
       should_continue: false,
-      message_ids: null,
     };
 
     if (input.finalStatus === "completed") {
       patch.processed_count = current.totalCount;
+      patch.error_message = null;
     }
 
     if (input.finalStatus === "failed") {
