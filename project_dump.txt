@@ -1,0 +1,1782 @@
+# DUMP DU PROJET
+# Source: C:\Users\souro\Desktop\jobtrakv2\app\job-domain-test-fake
+==================================================
+
+## page.tsx
+```
+// app/job-domain-test-fake/page.tsx
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import {
+  fakeJobApplications,
+  fakeJobEmails,
+  type JobApplication,
+  type JobEmail,
+  type JobStatus,
+} from "@/app/_fake/fakeJobDomainData";
+
+import {
+  JOB_STATUS,
+  clampInt,
+  statusDotClass,
+  statusTextClass,
+} from "./_components/ui";
+import { toBuckets, type Bucket } from "./_lib/buckets";
+
+import { HeaderBar } from "./_components/HeaderBar";
+import { ScanStartModal } from "./_components/ScanStartModal";
+import { ApplicationsPanel } from "./_components/ApplicationsPanel";
+import { Drawer } from "./_components/Drawer";
+import { EmailEditModal } from "./_components/EmailEditModal";
+import { StatusChangeModal } from "./_components/StatusChangeModal";
+
+type StatusFilter = JobStatus | "all";
+type ArchiveMode = "active" | "archived";
+type ScanMode = "since_last" | "custom";
+
+export default function JobDomainTestPageFake() {
+  const points = 3000;
+
+  const [apps, setApps] = useState<ReadonlyArray<JobApplication>>(
+    () => fakeJobApplications
+  );
+  const [emails, setEmails] = useState<ReadonlyArray<JobEmail>>(
+    () => fakeJobEmails
+  );
+
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const [archiveMode, setArchiveMode] = useState<ArchiveMode>("active");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  // ---- Scan modal / scan state
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<ScanMode>("since_last");
+  const [scanStartDate, setScanStartDate] = useState<string>(""); // yyyy-mm-dd
+
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [scanRunning, setScanRunning] = useState(false);
+  const [scanPaused, setScanPaused] = useState(false);
+
+  // ---- Status change modal
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+
+  // ---- responsive page size: 10 mobile / 20 desktop
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
+  const pageSize = isMobile ? 10 : 20;
+  const [page, setPage] = useState<number>(1);
+
+  // ---- global ESC
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setSelectedAppId(null);
+        setEmailEditOpen(false);
+        setEmailEditId(null);
+        setProfileMenuOpen(false);
+        setScanModalOpen(false);
+        setStatusModalOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // ---- actions (fake)
+  async function poll() {
+    setBusy(true);
+    setErr(null);
+    await new Promise((r) => setTimeout(r, 200));
+    setBusy(false);
+  }
+
+  function openScanModal() {
+    if (scanRunning) return;
+    setScanMode("since_last");
+    setScanStartDate("");
+    setScanModalOpen(true);
+  }
+
+  function startFakeScan(_selected: { mode: ScanMode; startDate?: string }) {
+    setScanModalOpen(false);
+    setScanOpen(true);
+    setScanRunning(true);
+    setScanPaused(false);
+    setScanProgress(0);
+  }
+
+  function pauseOrResumeScan() {
+    if (!scanRunning) return;
+    setScanPaused((p) => !p);
+  }
+
+  function stopScan() {
+    if (!scanRunning) return;
+    setScanRunning(false);
+    setScanPaused(false);
+    setScanOpen(false);
+    setScanProgress(0);
+  }
+
+  // fake scan timer
+  useEffect(() => {
+    if (!scanRunning) return;
+    if (scanPaused) return;
+
+    const id = window.setInterval(() => {
+      setScanProgress((p) => {
+        const next = Math.min(100, p + Math.floor(Math.random() * 7) + 3);
+        if (next >= 100) {
+          window.setTimeout(() => {
+            setScanRunning(false);
+            setScanPaused(false);
+          }, 150);
+        }
+        return next;
+      });
+    }, 120);
+
+    return () => window.clearInterval(id);
+  }, [scanRunning, scanPaused]);
+
+  useEffect(() => {
+    if (!scanRunning && scanProgress >= 100) {
+      const t = window.setTimeout(() => {
+        setScanOpen(false);
+        setScanProgress(0);
+      }, 500);
+      return () => window.clearTimeout(t);
+    }
+  }, [scanRunning, scanProgress]);
+
+  // ---- domain actions (fake)
+  async function updateApplication(input: {
+    applicationId: string;
+    company: string | null;
+    position: string | null;
+    status: JobStatus;
+    notes: string | null;
+  }) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const now = new Date().toISOString();
+      setApps((prev) =>
+        prev.map((a) =>
+          a.id === input.applicationId
+            ? {
+                ...a,
+                company: input.company,
+                position: input.position,
+                status: input.status,
+                notes: input.notes,
+                updated_at: now,
+                last_activity_at: now,
+              }
+            : a
+        )
+      );
+    } catch {
+      setErr("Update application failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateEmail(input: {
+    jobEmailId: string;
+    company: string | null;
+    position: string | null;
+    status: JobStatus;
+    eventType: string | null;
+  }) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const now = new Date().toISOString();
+      setEmails((prev) =>
+        prev.map((e) =>
+          e.id === input.jobEmailId
+            ? {
+                ...e,
+                company: input.company,
+                position: input.position,
+                status: input.status,
+                event_type: input.eventType,
+                updated_at: now,
+              }
+            : e
+        )
+      );
+    } catch {
+      setErr("Update email failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ---- domain actions (suite)
+  async function archiveApplication(applicationId: string, archived: boolean) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const now = new Date().toISOString();
+
+      // Archiver l'app
+      setApps((prev) =>
+        prev.map((a) =>
+          a.id === applicationId ? { ...a, archived, updated_at: now } : a
+        )
+      );
+
+      // Archiver tous les emails liés
+      setEmails((prev) =>
+        prev.map((e) =>
+          e.application_id === applicationId
+            ? { ...e, archived, updated_at: now }
+            : e
+        )
+      );
+
+      // Fermer le drawer après archivage
+      setSelectedAppId(null);
+    } catch {
+      setErr("Archive application failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteApplication(applicationId: string) {
+    setBusy(true);
+    setErr(null);
+    try {
+      // Supprimer tous les emails liés
+      setEmails((prev) =>
+        prev.filter((e) => e.application_id !== applicationId)
+      );
+
+      // Supprimer l'app
+      setApps((prev) => prev.filter((a) => a.id !== applicationId));
+
+      // Fermer le drawer après suppression
+      setSelectedAppId(null);
+    } catch {
+      setErr("Delete application failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  // ---- derived buckets
+  const appsWithEmails = useMemo(() => {
+    const visibleApps =
+      archiveMode === "active"
+        ? apps.filter((a) => !a.archived)
+        : apps.filter((a) => a.archived);
+
+    const visibleEmails =
+      archiveMode === "active"
+        ? emails.filter((e) => !e.archived)
+        : emails.filter((e) => e.archived);
+
+    return toBuckets(visibleApps, visibleEmails);
+  }, [apps, emails, archiveMode]);
+
+  const statusCounts = useMemo(() => {
+    const normal = appsWithEmails.filter((b) => b.app.id !== "__unassigned__");
+    const counts: Record<StatusFilter, number> = {
+      all: normal.length,
+      applied: 0,
+      interview: 0,
+      rejection: 0,
+      offer: 0,
+      unknown: 0,
+    };
+    for (const b of normal)
+      counts[b.app.status] = (counts[b.app.status] ?? 0) + 1;
+    return counts;
+  }, [appsWithEmails]);
+
+  const filteredBuckets = useMemo(() => {
+    const normal = appsWithEmails.filter((b) => b.app.id !== "__unassigned__");
+    return statusFilter === "all"
+      ? normal
+      : normal.filter((b) => b.app.status === statusFilter);
+  }, [appsWithEmails, statusFilter]);
+
+  const maxPage = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredBuckets.length / pageSize));
+  }, [filteredBuckets.length, pageSize]);
+
+  useEffect(() => {
+    setPage((p) => clampInt(p, 1, maxPage));
+  }, [maxPage]);
+
+  const pagedBuckets = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredBuckets.slice(start, start + pageSize);
+  }, [filteredBuckets, page, pageSize]);
+
+  useEffect(() => {
+    setPage(1);
+    setSelectedAppId(null);
+    setEmailEditOpen(false);
+    setEmailEditId(null);
+  }, [statusFilter, archiveMode, pageSize]);
+
+  const selectedBucket: Bucket | null = useMemo(() => {
+    if (!selectedAppId) return null;
+    return appsWithEmails.find((b) => b.app.id === selectedAppId) ?? null;
+  }, [appsWithEmails, selectedAppId]);
+
+  // ---- drawer note
+  const [noteDraft, setNoteDraft] = useState("");
+  useEffect(() => {
+    if (!selectedBucket) return setNoteDraft("");
+    setNoteDraft(selectedBucket.app.notes ?? "");
+  }, [selectedBucket?.app.id, selectedBucket?.app.notes]);
+
+  // ---- drawer status draft
+  const [appStatusDraft, setAppStatusDraft] = useState<JobStatus>("unknown");
+  useEffect(() => {
+    if (!selectedBucket) return;
+    setAppStatusDraft(selectedBucket.app.status);
+  }, [selectedBucket?.app.id, selectedBucket?.app.status]);
+
+  const noteDirty = useMemo(() => {
+    if (!selectedBucket) return false;
+    return (noteDraft ?? "") !== (selectedBucket.app.notes ?? "");
+  }, [noteDraft, selectedBucket?.app.notes]);
+
+  const appStatusDirty = useMemo(() => {
+    if (!selectedBucket) return false;
+    return appStatusDraft !== selectedBucket.app.status;
+  }, [appStatusDraft, selectedBucket?.app.status]);
+
+  const canSaveDrawer = noteDirty || appStatusDirty;
+
+  // ---- email edit modal
+  const [emailEditOpen, setEmailEditOpen] = useState(false);
+  const [emailEditId, setEmailEditId] = useState<string | null>(null);
+
+  const selectedEmailForModal = useMemo(() => {
+    if (!selectedBucket || !emailEditId) return null;
+    return selectedBucket.emails.find((e) => e.id === emailEditId) ?? null;
+  }, [selectedBucket, emailEditId]);
+
+  const [emailEdit, setEmailEdit] = useState<{
+    company: string;
+    position: string;
+    status: JobStatus;
+    eventType: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!selectedEmailForModal) return setEmailEdit(null);
+    setEmailEdit({
+      company: selectedEmailForModal.company ?? "",
+      position: selectedEmailForModal.position ?? "",
+      status: selectedEmailForModal.status,
+      eventType: selectedEmailForModal.event_type ?? "",
+    });
+  }, [selectedEmailForModal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const statusOptions = useMemo(
+    () => [
+      { key: "all" as const, label: "All" },
+      {
+        key: "applied" as const,
+        label: "Applied",
+        dot: statusDotClass("applied"),
+      },
+      {
+        key: "interview" as const,
+        label: "Interview",
+        dot: statusDotClass("interview"),
+      },
+      { key: "offer" as const, label: "Offer", dot: statusDotClass("offer") },
+      {
+        key: "rejection" as const,
+        label: "Rejection",
+        dot: statusDotClass("rejection"),
+      },
+      {
+        key: "unknown" as const,
+        label: "Unknown",
+        dot: statusDotClass("unknown"),
+      },
+    ],
+    []
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="mx-auto max-w-7xl px-5 py-6">
+        <HeaderBar
+          points={points}
+          email="fake.user@jobtrack.ai"
+          busy={busy}
+          poll={poll}
+          profileMenuOpen={profileMenuOpen}
+          setProfileMenuOpen={setProfileMenuOpen}
+          scanRunning={scanRunning}
+          scanPaused={scanPaused}
+          onOpenScanModal={openScanModal}
+          onPauseOrResume={pauseOrResumeScan}
+          onStopScan={stopScan}
+        />
+
+        {scanOpen ? (
+          <div className="mb-2 rounded-xl bg-white/5 ring-1 ring-white/10 px-3 py-2">
+            <div className="flex items-center justify-between text-xs text-slate-300">
+              <span>{scanPaused ? "Paused…" : "Scan…"}</span>
+              <span className="text-slate-200">{scanProgress}%</span>
+            </div>
+            <div className="mt-2 h-2 w-full rounded-full bg-slate-900/60 ring-1 ring-white/10 overflow-hidden">
+              <div
+                className="h-full bg-indigo-400/70"
+                style={{ width: `${scanProgress}%` }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {err ? (
+          <div className="mb-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2">
+            <div className="text-xs font-bold text-red-100">Erreur</div>
+            <div className="mt-1 break-words text-xs text-red-100/90">
+              {err}
+            </div>
+          </div>
+        ) : null}
+
+        <ApplicationsPanel
+          archiveMode={archiveMode}
+          setArchiveMode={setArchiveMode}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          statusOptions={statusOptions}
+          statusCounts={statusCounts}
+          filteredTotal={filteredBuckets.length}
+          page={page}
+          maxPage={maxPage}
+          onPrev={() => setPage((p) => clampInt(p - 1, 1, maxPage))}
+          onNext={() => setPage((p) => clampInt(p + 1, 1, maxPage))}
+          pagedBuckets={pagedBuckets}
+          onSelectApp={(id) => setSelectedAppId(id)}
+          statusTextClass={statusTextClass}
+        />
+      </div>
+
+      <ScanStartModal
+        open={scanModalOpen}
+        mode={scanMode}
+        startDate={scanStartDate}
+        setMode={setScanMode}
+        setStartDate={setScanStartDate}
+        onClose={() => setScanModalOpen(false)}
+        onStart={() =>
+          startFakeScan({
+            mode: scanMode,
+            startDate: scanMode === "custom" ? scanStartDate : undefined,
+          })
+        }
+      />
+
+      <StatusChangeModal
+        open={statusModalOpen}
+        currentStatus={selectedBucket?.app.status ?? "unknown"}
+        onClose={() => setStatusModalOpen(false)}
+        busy={busy}
+        onConfirm={async (newStatus) => {
+          if (!selectedBucket) return;
+
+          setAppStatusDraft(newStatus);
+
+          await updateApplication({
+            applicationId: selectedBucket.app.id,
+            company: selectedBucket.app.company ?? null,
+            position: selectedBucket.app.position ?? null,
+            status: newStatus,
+            notes: noteDraft || null,
+          });
+
+          setStatusModalOpen(false);
+          await poll();
+        }}
+      />
+
+      <Drawer
+        selectedBucket={selectedBucket}
+        busy={busy}
+        onClose={() => setSelectedAppId(null)}
+        noteDraft={noteDraft}
+        setNoteDraft={setNoteDraft}
+        noteDirty={canSaveDrawer}
+        appStatusDraft={appStatusDraft}
+        onOpenStatusModal={() => setStatusModalOpen(true)}
+        onSaveApplication={async () => {
+          if (!selectedBucket) return;
+          await updateApplication({
+            applicationId: selectedBucket.app.id,
+            company: selectedBucket.app.company ?? null,
+            position: selectedBucket.app.position ?? null,
+            status: appStatusDraft,
+            notes: noteDraft || null,
+          });
+          await poll();
+        }}
+        onResetNote={() => {
+          setNoteDraft(selectedBucket?.app.notes ?? "");
+          if (selectedBucket) setAppStatusDraft(selectedBucket.app.status);
+        }}
+        onArchiveApplication={async () => {
+          // ✨ NOUVEAU
+          if (!selectedBucket) return;
+          const action = selectedBucket.app.archived ? "unarchive" : "archive";
+          const ok = window.confirm(
+            `Are you sure you want to ${action} this application? This will ${action} all related emails.`
+          );
+          if (!ok) return;
+
+          await archiveApplication(
+            selectedBucket.app.id,
+            !selectedBucket.app.archived
+          );
+          await poll();
+        }}
+        onDeleteApplication={async () => {
+          // ✨ NOUVEAU
+          if (!selectedBucket) return;
+          const ok = window.confirm(
+            `⚠️ Are you sure you want to DELETE this application?\n\nThis will permanently delete:\n• The application\n• ${selectedBucket.emails.length} related email(s)\n\nThis action CANNOT be undone.`
+          );
+          if (!ok) return;
+
+          await deleteApplication(selectedBucket.app.id);
+          await poll();
+        }}
+        onEditEmail={(emailId) => {
+          setEmailEditId(emailId);
+          setEmailEditOpen(true);
+        }}
+        statusTextClass={statusTextClass}
+      />
+
+      <EmailEditModal
+        open={emailEditOpen}
+        jobStatus={JOB_STATUS}
+        selectedEmail={selectedEmailForModal}
+        emailEdit={emailEdit}
+        setEmailEdit={setEmailEdit}
+        onClose={() => {
+          setEmailEditOpen(false);
+          setEmailEditId(null);
+        }}
+        busy={busy}
+        onSave={async () => {
+          if (!selectedEmailForModal || !emailEdit) return;
+          await updateEmail({
+            jobEmailId: selectedEmailForModal.id,
+            company: emailEdit.company || null,
+            position: emailEdit.position || null,
+            status: emailEdit.status,
+            eventType: emailEdit.eventType || null,
+          });
+          setEmailEditOpen(false);
+          setEmailEditId(null);
+          await poll();
+        }}
+        onReset={() => {
+          if (!selectedEmailForModal) return;
+          setEmailEdit({
+            company: selectedEmailForModal.company ?? "",
+            position: selectedEmailForModal.position ?? "",
+            status: selectedEmailForModal.status,
+            eventType: selectedEmailForModal.event_type ?? "",
+          });
+        }}
+      />
+
+      {profileMenuOpen ? (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setProfileMenuOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+```
+------------------------------
+
+## _components/ApplicationsPanel.tsx
+```
+"use client";
+
+import type { JobStatus } from "@/app/_fake/fakeJobDomainData";
+import type { Bucket } from "../_lib/buckets";
+import { ToggleMini } from "./ui";
+
+type StatusFilter = JobStatus | "all";
+type ArchiveMode = "active" | "archived";
+
+export function ApplicationsPanel(props: {
+  archiveMode: ArchiveMode;
+  setArchiveMode: (v: ArchiveMode) => void;
+
+  statusFilter: StatusFilter;
+  setStatusFilter: (v: StatusFilter) => void;
+
+  statusOptions: ReadonlyArray<{ key: StatusFilter; label: string; dot?: string }>;
+  statusCounts: Record<StatusFilter, number>;
+
+  filteredTotal: number;
+
+  page: number;
+  maxPage: number;
+  onPrev: () => void;
+  onNext: () => void;
+
+  pagedBuckets: ReadonlyArray<Bucket>;
+  onSelectApp: (id: string) => void;
+
+  statusTextClass: (s: JobStatus) => string;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 px-3 py-3">
+      <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="text-sm font-bold">Applications</div>
+
+          <ToggleMini
+            leftLabel="Active"
+            rightLabel="Archived"
+            value={props.archiveMode === "active" ? "left" : "right"}
+            onChange={(v) => props.setArchiveMode(v === "left" ? "active" : "archived")}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+          <span>
+            Total: <span className="text-slate-100">{props.filteredTotal}</span>
+          </span>
+          <span className="text-slate-500">•</span>
+          <span>
+            Page {props.page}/{props.maxPage}
+          </span>
+          <button
+            className="rounded-lg bg-white/5 px-2 py-1 ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60"
+            disabled={props.page <= 1}
+            onClick={props.onPrev}
+          >
+            Prev
+          </button>
+          <button
+            className="rounded-lg bg-white/5 px-2 py-1 ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60"
+            disabled={props.page >= props.maxPage}
+            onClick={props.onNext}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile dropdown */}
+      <div className="mb-2">
+        <div className="sm:hidden flex items-center gap-2">
+          <div className="text-xs text-slate-300">Status</div>
+          <select
+            className="flex-1 rounded-xl bg-slate-950/40 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 outline-none"
+            value={props.statusFilter}
+            onChange={(e) => props.setStatusFilter(e.target.value as StatusFilter)}
+          >
+            {props.statusOptions.map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.label} ({props.statusCounts[opt.key] ?? 0})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Desktop chips */}
+        <div className="hidden sm:flex flex-wrap items-center gap-2">
+          {props.statusOptions.map((opt) => {
+            const selected = props.statusFilter === opt.key;
+            const count = props.statusCounts[opt.key] ?? 0;
+
+            const dot =
+              opt.key === "all"
+                ? "bg-slate-400"
+                : opt.dot ?? "bg-slate-400";
+
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => props.setStatusFilter(opt.key)}
+                className={[
+                  "flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-semibold ring-1",
+                  selected
+                    ? "bg-indigo-500/15 ring-indigo-400/30"
+                    : "bg-white/5 ring-white/10 hover:bg-white/10",
+                ].join(" ")}
+              >
+                <span className={["h-2 w-2 rounded-full", dot].join(" ")} />
+                <span>{opt.label}</span>
+                <span className="text-slate-300">{count}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {props.pagedBuckets.map(({ app, emails }) => (
+          <div
+            key={app.id}
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer select-none rounded-2xl bg-white/5 px-3 py-2 text-left ring-1 ring-white/10 hover:bg-white/10"
+            onClick={() => props.onSelectApp(app.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                props.onSelectApp(app.id);
+              }
+            }}
+          >
+            <div className="truncate text-sm font-extrabold">
+              {app.company ?? "—"}
+            </div>
+            <div className="truncate text-xs text-slate-300">
+              {app.position ?? "—"}
+            </div>
+            <div
+              className={[
+                "mt-1 text-[11px] font-semibold",
+                props.statusTextClass(app.status),
+              ].join(" ")}
+            >
+              {app.status}
+            </div>
+            <div className="mt-2 text-[11px] text-slate-400">{emails.length}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+------------------------------
+
+## _components/Drawer.tsx
+```
+// app/job-domain-test-fake/_components/Drawer.tsx
+"use client";
+
+import type { Bucket } from "../_lib/buckets";
+import {
+  statusTextClass as defaultStatusTextClass,
+  statusDotClass,
+} from "./ui";
+import type { JobStatus } from "@/app/_fake/fakeJobDomainData";
+
+type DrawerProps = Readonly<{
+  selectedBucket: Bucket | null;
+  busy: boolean;
+  onClose: () => void;
+
+  noteDraft: string;
+  setNoteDraft: (v: string) => void;
+
+  noteDirty: boolean;
+
+  appStatusDraft: JobStatus;
+  onOpenStatusModal: () => void;
+
+  onSaveApplication: () => void;
+  onResetNote: () => void;
+
+  onArchiveApplication: () => void;
+  onDeleteApplication: () => void;
+
+  onEditEmail: (emailId: string) => void;
+
+  statusTextClass?: (s: JobStatus) => string;
+}>;
+
+export function Drawer(props: DrawerProps) {
+  const statusText = props.statusTextClass ?? defaultStatusTextClass;
+
+  if (!props.selectedBucket) return null;
+  const b = props.selectedBucket;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={props.onClose} />
+
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[540px] bg-slate-950/95 shadow-2xl">
+        <div className="h-full overflow-y-auto">
+          <div className="px-4 pt-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-lg font-extrabold">
+                  {b.app.company ?? "—"}
+                </div>
+                <div className="truncate text-sm text-slate-300">
+                  {b.app.position ?? "—"}
+                </div>
+
+                {/* ✨ MODIFICATION : Boutons d'actions intégrés ici */}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {/* Status Button */}
+                  <button
+                    type="button"
+                    onClick={props.onOpenStatusModal}
+                    disabled={props.busy}
+                    className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60 transition-all"
+                  >
+                    <span
+                      className={[
+                        "h-2 w-2 rounded-full",
+                        statusDotClass(props.appStatusDraft),
+                      ].join(" ")}
+                    />
+                    <span
+                      className={[
+                        "text-xs font-semibold",
+                        statusText(props.appStatusDraft),
+                      ].join(" ")}
+                    >
+                      {props.appStatusDraft}
+                    </span>
+                  </button>
+
+                  {/* Separator & Count */}
+                  <div className="ml-1 text-xs text-slate-400">
+                    • {b.emails.length} email{b.emails.length !== 1 ? "s" : ""}
+                  </div>
+
+                  {/* Archive Button (Mini) */}
+                  <button
+                    type="button"
+                    className="rounded-lg bg-amber-500/10 px-2 py-1.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/30 hover:bg-amber-500/20 disabled:opacity-60 transition-all"
+                    disabled={props.busy}
+                    onClick={props.onArchiveApplication}
+                  >
+                    {b.app.archived ? "Unarchive" : "Archive"}
+                  </button>
+
+                  {/* Delete Button (Mini) */}
+                  <button
+                    type="button"
+                    className="rounded-lg bg-red-500/10 px-2 py-1.5 text-xs font-semibold text-red-200 ring-1 ring-red-400/30 hover:bg-red-500/20 disabled:opacity-60 transition-all"
+                    disabled={props.busy}
+                    onClick={props.onDeleteApplication}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="rounded-lg bg-white/5 px-2 py-1 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+                onClick={props.onClose}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 pt-3">
+            <div className="text-xs font-bold text-slate-200">Note</div>
+            <textarea
+              className="mt-1 w-full min-h-[90px] rounded-xl bg-slate-950/30 px-3 py-2 text-sm ring-1 ring-white/10 outline-none focus:ring-indigo-400/30"
+              value={props.noteDraft}
+              onChange={(e) => props.setNoteDraft(e.target.value)}
+              placeholder="Écris une note…"
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
+                disabled={props.busy || !props.noteDirty}
+                onClick={props.onSaveApplication}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60"
+                disabled={props.busy || !props.noteDirty}
+                onClick={props.onResetNote}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+
+          {/* 🗑️ ANCIENNE SECTION "Actions" SUPPRIMÉE ICI */}
+
+          <div className="px-4 pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold text-slate-200">Emails</div>
+              <div className="text-[11px] text-slate-400">
+                {b.emails.length}
+              </div>
+            </div>
+
+            <div className="mt-2 space-y-2">
+              {b.emails.map((em) => (
+                <div key={em.id} className="bg-white/5 rounded-xl px-3 py-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-extrabold text-slate-100">
+                        {em.from_text ?? "—"}
+                      </div>
+                      <div className="truncate text-[11px] text-slate-300">
+                        {em.subject ?? "—"}
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-400">
+                        <span
+                          className={[
+                            "font-semibold",
+                            statusText(em.status),
+                          ].join(" ")}
+                        >
+                          {em.status}
+                        </span>
+                        {em.received_at ? (
+                          <span className="text-slate-500">
+                            {" "}
+                            • {new Date(em.received_at).toLocaleString()}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="rounded-lg bg-indigo-500/20 px-2 py-1 text-[11px] font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
+                      disabled={props.busy}
+                      onClick={() => props.onEditEmail(em.id)}
+                    >
+                      Edit
+                    </button>
+                  </div>
+
+                  <div className="mt-2 text-[11px] text-slate-400">Snippet</div>
+                  <div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">
+                    {(em.snippet ?? "—").trim() || "—"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+```
+------------------------------
+
+## _components/EmailEditModal.tsx
+```
+// app/job-domain-test-fake/_components/EmailEditModal.tsx
+"use client";
+
+import type { JobEmail, JobStatus } from "@/app/_fake/fakeJobDomainData";
+import { ModalShell } from "./ui";
+
+export function EmailEditModal(props: {
+  open: boolean;
+  jobStatus: ReadonlyArray<JobStatus>;
+  selectedEmail: JobEmail | null;
+  emailEdit: {
+    company: string;
+    position: string;
+    status: JobStatus;
+    eventType: string;
+  } | null;
+  setEmailEdit: (
+    v: {
+      company: string;
+      position: string;
+      status: JobStatus;
+      eventType: string;
+    } | null
+  ) => void;
+
+  onClose: () => void;
+
+  busy: boolean;
+  onSave: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <ModalShell
+      open={props.open}
+      title="Edit email"
+      subtitle={props.selectedEmail?.subject ?? undefined}
+      onClose={props.onClose}
+    >
+      {!props.selectedEmail || !props.emailEdit ? (
+        <div className="text-sm text-slate-300">No email selected.</div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-24 shrink-0 text-xs text-slate-300">Company</div>
+            <input
+              className="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-sm ring-1 ring-white/10 outline-none focus:ring-indigo-400/30"
+              value={props.emailEdit.company}
+              onChange={(e) =>
+                props.setEmailEdit({
+                  ...props.emailEdit!,
+                  company: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-24 shrink-0 text-xs text-slate-300">Position</div>
+            <input
+              className="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-sm ring-1 ring-white/10 outline-none focus:ring-indigo-400/30"
+              value={props.emailEdit.position}
+              onChange={(e) =>
+                props.setEmailEdit({
+                  ...props.emailEdit!,
+                  position: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-24 shrink-0 text-xs text-slate-300">Status</div>
+            <select
+              className="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-sm ring-1 ring-white/10 outline-none focus:ring-indigo-400/30"
+              value={props.emailEdit.status}
+              onChange={(e) =>
+                props.setEmailEdit({
+                  ...props.emailEdit!,
+                  status: e.target.value as JobStatus,
+                })
+              }
+            >
+              {props.jobStatus.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="w-24 shrink-0 text-xs text-slate-300">Event</div>
+            <input
+              className="w-full rounded-xl bg-slate-950/40 px-3 py-2 text-sm ring-1 ring-white/10 outline-none focus:ring-indigo-400/30"
+              value={props.emailEdit.eventType}
+              onChange={(e) =>
+                props.setEmailEdit({
+                  ...props.emailEdit!,
+                  eventType: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
+              disabled={props.busy}
+              onClick={props.onSave}
+            >
+              Save
+            </button>
+
+            <button
+              type="button"
+              className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60"
+              disabled={props.busy}
+              onClick={props.onReset}
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+    </ModalShell>
+  );
+}
+
+```
+------------------------------
+
+## _components/HeaderBar.tsx
+```
+"use client";
+
+import { Dropdown, MenuItem } from "./ui";
+import {
+  IconChevronDown,
+  IconPause,
+  IconRefresh,
+  IconStop,
+  IconUser,
+} from "./icons";
+
+export function HeaderBar(props: {
+  points: number;
+  email: string;
+  busy: boolean;
+  poll: () => void;
+
+  profileMenuOpen: boolean;
+  setProfileMenuOpen: (v: boolean) => void;
+
+  scanRunning: boolean;
+  scanPaused: boolean;
+
+  onOpenScanModal: () => void;
+  onPauseOrResume: () => void;
+  onStopScan: () => void;
+}) {
+  const scanActionVisible = props.scanRunning;
+
+  return (
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-2xl font-black">Bienvenue sur JobTrackAI</div>
+
+        <div className="mt-2 flex items-center gap-4 text-sm text-slate-300">
+          <span className="text-slate-200">{props.points} points</span>
+          <span className="text-slate-500">•</span>
+          <span className="truncate">{props.email}</span>
+        </div>
+
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
+            disabled={props.scanRunning}
+            onClick={() => props.onOpenScanModal()}
+          >
+            Scan
+          </button>
+
+          {scanActionVisible ? (
+            <>
+              <button
+                type="button"
+                className="rounded-xl bg-amber-500/20 p-2 ring-1 ring-amber-400/30 hover:bg-amber-500/30 disabled:opacity-60"
+                onClick={() => props.onPauseOrResume()}
+                title={props.scanPaused ? "Resume" : "Pause"}
+                aria-label={props.scanPaused ? "Resume" : "Pause"}
+              >
+                <IconPause className="h-4 w-4 text-amber-200" />
+              </button>
+
+              <button
+                type="button"
+                className="rounded-xl bg-red-500/20 p-2 ring-1 ring-red-400/30 hover:bg-red-500/30 disabled:opacity-60"
+                onClick={() => props.onStopScan()}
+                title="Stop"
+                aria-label="Stop"
+              >
+                <IconStop className="h-4 w-4 text-red-200" />
+              </button>
+            </>
+          ) : null}
+
+          <button
+            type="button"
+            className="rounded-xl bg-white/5 p-2 ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60"
+            disabled={props.busy}
+            onClick={() => props.poll()}
+            title="Refresh"
+            aria-label="Refresh"
+          >
+            <IconRefresh
+              className={props.busy ? "h-4 w-4 animate-spin" : "h-4 w-4"}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="relative">
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+          onClick={() => props.setProfileMenuOpen(!props.profileMenuOpen)}
+          aria-label="Profile menu"
+          title="Profile"
+        >
+          <IconUser className="h-4 w-4 text-slate-200" />
+          <span className="hidden sm:inline">Profil</span>
+          <IconChevronDown className="h-4 w-4 text-slate-400" />
+        </button>
+
+        <Dropdown open={props.profileMenuOpen} align="right">
+          <MenuItem
+            label="Se déconnecter"
+            onClick={() => {
+              props.setProfileMenuOpen(false);
+              alert("Fake: logout");
+            }}
+          />
+          <MenuItem
+            label="Changer de langue"
+            onClick={() => {
+              props.setProfileMenuOpen(false);
+              alert("Fake: change language");
+            }}
+          />
+          <div className="my-1 h-px bg-white/10" />
+          <MenuItem
+            label="Acheter des points"
+            onClick={() => {
+              props.setProfileMenuOpen(false);
+              alert("Fake: buy points");
+            }}
+          />
+          <MenuItem
+            label="Enlever l'accès à la boîte mail"
+            onClick={() => {
+              props.setProfileMenuOpen(false);
+              const ok = confirm("Retirer l'accès à la boîte mail ? (fake)");
+              if (!ok) return;
+              alert("Fake: mailbox access removed");
+            }}
+          />
+          <div className="my-1 h-px bg-white/10" />
+          <MenuItem
+            danger
+            label="Supprimer définitivement son compte"
+            onClick={() => {
+              props.setProfileMenuOpen(false);
+              const ok = confirm("⚠️ Supprimer définitivement ? (fake)");
+              if (!ok) return;
+              alert("Fake: account deleted");
+            }}
+          />
+        </Dropdown>
+      </div>
+    </div>
+  );
+}
+
+```
+------------------------------
+
+## _components/icons.tsx
+```
+"use client";
+
+export function IconRefresh(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={props.className ?? "h-4 w-4"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 9-9c2.7 0 5.1 1.2 6.8 3.1" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  );
+}
+
+export function IconChevronDown(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={props.className ?? "h-4 w-4"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+export function IconUser(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={props.className ?? "h-4 w-4"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4z" />
+    </svg>
+  );
+}
+
+export function IconStop(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={props.className ?? "h-4 w-4"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M7 7h10v10H7z" />
+    </svg>
+  );
+}
+
+export function IconPause(props: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={props.className ?? "h-4 w-4"}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M8 6v12" />
+      <path d="M16 6v12" />
+    </svg>
+  );
+}
+```
+------------------------------
+
+## _components/ScanStartModal.tsx
+```
+"use client";
+
+import { ModalShell } from "./ui";
+
+type ScanMode = "since_last" | "custom";
+
+export function ScanStartModal(props: {
+  open: boolean;
+  mode: ScanMode;
+  startDate: string;
+  setMode: (m: ScanMode) => void;
+  setStartDate: (v: string) => void;
+  onClose: () => void;
+  onStart: () => void;
+}) {
+  return (
+    <ModalShell
+      open={props.open}
+      title="Start scan"
+      subtitle="Choose how to scan (prototype)"
+      onClose={props.onClose}
+    >
+      <div className="space-y-3 text-sm text-slate-200">
+        <div className="text-xs text-slate-400">
+          (You’ll redesign this modal later — for now it just triggers a fake scan.)
+        </div>
+
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="scanMode"
+              checked={props.mode === "since_last"}
+              onChange={() => props.setMode("since_last")}
+            />
+            <span>Reprendre depuis la dernière fois</span>
+          </label>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="scanMode"
+              checked={props.mode === "custom"}
+              onChange={() => props.setMode("custom")}
+            />
+            <span>Reprendre depuis une date</span>
+          </label>
+
+          {props.mode === "custom" ? (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="text-xs text-slate-400">Date</div>
+              <input
+                type="date"
+                className="rounded-xl bg-slate-950/40 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 outline-none"
+                value={props.startDate}
+                onChange={(e) => props.setStartDate(e.target.value)}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
+            disabled={props.mode === "custom" && !props.startDate}
+            onClick={props.onStart}
+          >
+            Start
+          </button>
+
+          <button
+            type="button"
+            className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+            onClick={props.onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+```
+------------------------------
+
+## _components/StatusChangeModal.tsx
+```
+// app/job-domain-test-fake/_components/StatusChangeModal.tsx
+"use client";
+
+import type { JobStatus } from "@/app/_fake/fakeJobDomainData";
+import { ModalShell, statusTextClass, statusDotClass } from "./ui";
+
+export function StatusChangeModal(props: {
+  open: boolean;
+  currentStatus: JobStatus;
+  onClose: () => void;
+  onConfirm: (newStatus: JobStatus) => void;
+  busy: boolean;
+}) {
+  const statuses: JobStatus[] = [
+    "applied",
+    "interview",
+    "offer",
+    "rejection",
+    "unknown",
+  ];
+
+  return (
+    <ModalShell
+      open={props.open}
+      title="Change status"
+      subtitle="Select a new status for this application"
+      onClose={props.onClose}
+    >
+      <div className="space-y-2">
+        <div className="text-xs text-slate-400 mb-3">
+          Current status:{" "}
+          <span
+            className={[
+              "font-semibold",
+              statusTextClass(props.currentStatus),
+            ].join(" ")}
+          >
+            {props.currentStatus}
+          </span>
+        </div>
+
+        <div className="grid gap-2">
+          {statuses.map((status) => {
+            const isCurrent = status === props.currentStatus;
+
+            return (
+              <button
+                key={status}
+                type="button"
+                disabled={props.busy || isCurrent}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `Are you sure you want to change the status to "${status}"?`
+                    )
+                  ) {
+                    props.onConfirm(status);
+                  }
+                }}
+                className={[
+                  "flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold ring-1 transition-all",
+                  isCurrent
+                    ? "bg-white/10 ring-white/20 cursor-not-allowed opacity-60"
+                    : "bg-white/5 ring-white/10 hover:bg-white/10 hover:ring-white/20",
+                ].join(" ")}
+              >
+                <span
+                  className={[
+                    "h-3 w-3 rounded-full",
+                    statusDotClass(status),
+                  ].join(" ")}
+                />
+                <span className={statusTextClass(status)}>{status}</span>
+                {isCurrent ? (
+                  <span className="ml-auto text-xs text-slate-400">
+                    (current)
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="pt-2">
+          <button
+            type="button"
+            className="w-full rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+            onClick={props.onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+```
+------------------------------
+
+## _components/ui.tsx
+```
+"use client";
+
+import type React from "react";
+import type { JobStatus } from "@/app/_fake/fakeJobDomainData";
+
+export const JOB_STATUS: ReadonlyArray<JobStatus> = [
+  "applied",
+  "interview",
+  "rejection",
+  "offer",
+  "unknown",
+] as const;
+
+export function clampInt(n: number, min: number, max: number): number {
+  if (!Number.isFinite(n)) return min;
+  return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
+export function statusTextClass(s: JobStatus): string {
+  switch (s) {
+    case "applied":
+      return "text-blue-300";
+    case "offer":
+      return "text-emerald-300";
+    case "rejection":
+      return "text-red-300";
+    case "interview":
+      return "text-orange-300";
+    case "unknown":
+    default:
+      return "text-violet-300";
+  }
+}
+
+export function statusDotClass(s: JobStatus): string {
+  switch (s) {
+    case "applied":
+      return "bg-blue-400";
+    case "offer":
+      return "bg-emerald-400";
+    case "rejection":
+      return "bg-red-400";
+    case "interview":
+      return "bg-orange-400";
+    case "unknown":
+    default:
+      return "bg-violet-400";
+  }
+}
+
+export function Dropdown(props: {
+  open: boolean;
+  children: React.ReactNode;
+  align?: "left" | "right";
+}) {
+  if (!props.open) return null;
+  return (
+    <div
+      className={[
+        "absolute z-50 mt-2 w-56 rounded-xl bg-slate-950/95 p-1 ring-1 ring-white/15 shadow-lg backdrop-blur",
+        props.align === "left" ? "left-0" : "right-0",
+      ].join(" ")}
+    >
+      {props.children}
+    </div>
+  );
+}
+
+export function MenuItem(props: {
+  label: string;
+  danger?: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={props.disabled}
+      onClick={props.onClick}
+      className={[
+        "w-full rounded-lg px-3 py-2 text-left text-xs font-semibold",
+        props.danger
+          ? "text-red-100 hover:bg-red-500/15 disabled:opacity-60"
+          : "text-slate-100 hover:bg-white/10 disabled:opacity-60",
+      ].join(" ")}
+    >
+      {props.label}
+    </button>
+  );
+}
+
+export function ModalShell(props: {
+  open: boolean;
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!props.open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 z-[70] bg-black/50" onClick={props.onClose} />
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-3">
+        <div className="w-full max-w-[560px] rounded-2xl bg-slate-950/95 p-4 ring-1 ring-white/15 shadow-2xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-extrabold text-slate-100">
+                {props.title}
+              </div>
+              {props.subtitle ? (
+                <div className="truncate text-xs text-slate-400">
+                  {props.subtitle}
+                </div>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+              onClick={props.onClose}
+            >
+              Close
+            </button>
+          </div>
+          <div className="mt-3">{props.children}</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function ToggleMini(props: {
+  leftLabel: string;
+  rightLabel: string;
+  value: "left" | "right";
+  onChange: (v: "left" | "right") => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg bg-white/5 ring-1 ring-white/10 p-0.5">
+      <button
+        type="button"
+        className={[
+          "rounded-md px-2 py-1 text-xs font-semibold",
+          props.value === "left" ? "bg-white/10" : "hover:bg-white/10",
+        ].join(" ")}
+        onClick={() => props.onChange("left")}
+      >
+        {props.leftLabel}
+      </button>
+      <button
+        type="button"
+        className={[
+          "rounded-md px-2 py-1 text-xs font-semibold",
+          props.value === "right" ? "bg-white/10" : "hover:bg-white/10",
+        ].join(" ")}
+        onClick={() => props.onChange("right")}
+      >
+        {props.rightLabel}
+      </button>
+    </div>
+  );
+}
+```
+------------------------------
+
+## _lib/buckets.ts
+```
+import {
+  groupEmailsByApplication,
+  type JobApplication,
+  type JobEmail,
+} from "@/app/_fake/fakeJobDomainData";
+
+export type Bucket = Readonly<{
+  app: JobApplication & { id: string };
+  emails: ReadonlyArray<JobEmail>;
+}>;
+
+export function toBuckets(
+  apps: ReadonlyArray<JobApplication>,
+  emails: ReadonlyArray<JobEmail>
+): ReadonlyArray<Bucket> {
+  const grouped = groupEmailsByApplication(emails);
+
+  const normalBuckets: Bucket[] = apps.map((a) => ({
+    app: a,
+    emails: grouped[a.id] ?? [],
+  }));
+
+  const unassigned: Bucket = {
+    app: {
+      id: "__unassigned__",
+      user_id: apps[0]?.user_id ?? "",
+      company: "Unassigned",
+      position: "Emails not linked to an application",
+      status: "unknown",
+      applied_at: null,
+      last_activity_at: new Date().toISOString(),
+      notes: "Bucket auto (frontend).",
+      archived: false,
+      created_by: "auto",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    emails: grouped["__unassigned__"] ?? [],
+  };
+
+  normalBuckets.sort((a, b) =>
+    a.app.last_activity_at < b.app.last_activity_at ? 1 : -1
+  );
+
+  return [unassigned, ...normalBuckets];
+}
+```
+------------------------------
+

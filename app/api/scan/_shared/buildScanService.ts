@@ -23,11 +23,15 @@ import {
   refreshOutlookAccessToken,
 } from "@/infra/oauth/refresh";
 
-// NOUVEAUX IMPORTS
+// import pour Analyse Ai
 import { OpenAIClient } from "@/infra/ai/openAIClient";
 import { MailAnalysisService } from "@/services/ai/mailAnalysis";
 import { MailReaderService } from "@/services/ai/mailReaderService";
-import { AnalysisFileWriter } from "@/infra/logging/analysisFileWriter";
+
+// Ajout imports JobIngestion
+import { JobIngestionService } from "@/services/jobDomain/JobIngestionService";
+import { JobEmailRepository } from "@/repositories/jobEmailRepository";
+import { JobApplicationRepository } from "@/repositories/jobApplicationRepository";
 
 type MailConnectionRow = { provider: MailProvider };
 
@@ -133,9 +137,12 @@ export async function buildScanService(
   const mailReaderService = new MailReaderService(db);
 
   // =========================
-  // 7) File writer (logs)
+  // 7) Repos job domain
   // =========================
-  const analysisWriter = new AnalysisFileWriter("./tmp/mail-analysis.log");
+
+  const jobEmailRepo = new JobEmailRepository(db);
+  const jobAppRepo = new JobApplicationRepository(db);
+  const jobIngestion = new JobIngestionService(jobEmailRepo, jobAppRepo);
 
   // =========================
   // 8) ScanService (FINAL)
@@ -146,7 +153,7 @@ export async function buildScanService(
     providerApi,
     mailReaderService,
     mailAnalysisService,
-    analysisWriter,
+    jobIngestion,
     {
       rules,
       batchHours: 24,

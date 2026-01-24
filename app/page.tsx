@@ -18,6 +18,7 @@ const UI_PAGES: LinkItem[] = [
     label: "Login Page",
     status: "done",
   },
+  { href: "/pricing-page", label: "Pricing Page", status: "done" },
 ];
 
 const FEATURE_PAGES: LinkItem[] = [
@@ -43,6 +44,12 @@ const FEATURE_PAGES: LinkItem[] = [
     href: "/ai-analysis-test-page",
     label: "AI Analysis Test",
     module: "Module 5",
+    status: "done",
+  },
+  {
+    href: "/dashboard",
+    label: "Dashboard (UI Finale)",
+    module: "Module 8",
     status: "inProgress",
   },
 ];
@@ -94,8 +101,8 @@ function Section({
                 {item.status === "done"
                   ? "DONE"
                   : item.status === "inProgress"
-                  ? "IN PROGRESS"
-                  : "TODO"}
+                    ? "IN PROGRESS"
+                    : "TODO"}
               </span>
             </Link>
           </li>

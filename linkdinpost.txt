@@ -1,0 +1,937 @@
+post 1 code : 
+
+"use client";
+
+import { useState } from "react";
+
+type Module = {
+  id: number;
+  name: string;
+  features: string[];
+  status: "done" | "inProgress" | "todo";
+};
+
+const MODULES: Module[] = [
+  {
+    id: 1,
+    name: "Auth",
+    features: ["OAuth2 integration", "Session management", "Secure tokens"],
+    status: "done",
+  },
+  {
+    id: 2,
+    name: "Mail",
+    features: ["Gmail API", "Outlook API", "Mail reading"],
+    status: "done",
+  },
+  {
+    id: 3,
+    name: "Scan",
+    features: ["Get emails", "Data extraction"],
+    status: "done",
+  },
+  {
+    id: 4,
+    name: "AI",
+    features: ["NLP processing", "Response detection", "Smart categorization"],
+    status: "done",
+  },
+  {
+    id: 5,
+    name: "Jobs",
+    features: [
+      "Application tracking",
+      "Status management",
+      "Timeline",
+      "Application organization",
+    ],
+    status: "done",
+  },
+  {
+    id: 6,
+    name: "Billing",
+    features: ["Credit system", "Stripe integration", "Usage tracking"],
+    status: "done",
+  },
+  {
+    id: 7,
+    name: "UI",
+    features: ["Interactive charts", "Real-time updates", "Mobile responsive"],
+    status: "inProgress",
+  },
+];
+
+export default function ArchitectureVisualization() {
+  const [hoveredModule, setHoveredModule] = useState<number | null>(null);
+
+  const completedModules = MODULES.filter((m) => m.status === "done").length;
+  const totalModules = MODULES.length;
+  const progressPercentage = Math.round(
+    (completedModules / totalModules) * 100
+  );
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col relative overflow-hidden">
+      {/* Subtle background gradient */}
+      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-brand-orange/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md relative z-10">
+        <div className="max-w-[1800px] mx-auto px-8 py-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-white font-bold text-2xl hover:bg-brand-orange transition-colors duration-300">
+              J
+            </div>
+            <span className="font-bold text-3xl tracking-tight text-black">
+              JobTrackAI
+            </span>
+          </div>
+          <h1 className="gen-typo text-[56px] sm:text-[72px] leading-[0.92] tracking-[-3px] mb-4 text-black">
+            MODULAR ARCHITECTURE
+          </h1>
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-3">
+              <div className="text-4xl font-bold text-green-500">
+                {completedModules}
+              </div>
+              <div className="text-sm font-medium text-gray-600 uppercase tracking-wider">
+                / {totalModules} Modules
+                <br />
+                Completed
+              </div>
+            </div>
+            <div className="h-12 w-px bg-gray-300"></div>
+            <div className="flex items-center gap-3">
+              <div className="text-4xl font-bold text-brand-orange">
+                {progressPercentage}%
+              </div>
+              <div className="text-sm font-medium text-gray-600 uppercase tracking-wider">
+                Overall
+                <br />
+                Progress
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Visualization */}
+      <main className="flex-1 relative z-10 flex items-center justify-center py-20">
+        <div className="w-full max-w-[1800px] px-8">
+          {/* Progress Bar */}
+          <div className="relative mb-24">
+            {/* Barre de progression qui passe par le milieu des cercles */}
+            <div
+              className="absolute left-0 right-0 h-6 bg-gray-200 rounded-full"
+              style={{ top: "90px", zIndex: 1 }}
+            >
+              {/* Gradient vert → orange fluide */}
+              <div
+                className="absolute inset-y-0 left-0 rounded-full transition-all duration-1000"
+                style={{
+                  width: `${((completedModules + 0.5) / totalModules) * 100}%`,
+                  background:
+                    "linear-gradient(to right, #10b981 0%, #10b981 85%, #ff9f43 100%)",
+                }}
+              />
+            </div>
+
+            {/* Modules horizontaux */}
+            <div
+              className="relative flex justify-between items-start"
+              style={{ zIndex: 2 }}
+            >
+              {MODULES.map((module, index) => {
+                const isHovered = hoveredModule === module.id;
+                const isCompleted = module.status === "done";
+                const isInProgress = module.status === "inProgress";
+
+                return (
+                  <div
+                    key={module.id}
+                    className="flex flex-col items-center"
+                    style={{ flex: "0 0 auto", width: "220px" }}
+                    onMouseEnter={() => setHoveredModule(module.id)}
+                    onMouseLeave={() => setHoveredModule(null)}
+                  >
+                    <div className="relative mb-8">
+                      {/* Status indicator (outside circle) */}
+                      <div className="absolute -top-4 -right-4 z-20">
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center shadow-lg ${
+                            isCompleted
+                              ? "bg-green-500"
+                              : isInProgress
+                              ? "bg-brand-orange"
+                              : "bg-gray-400"
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="3"
+                            >
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          ) : isInProgress ? (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.5"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                              <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                          ) : (
+                            <svg
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.5"
+                            >
+                              <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* The Circle */}
+                      <div
+                        className={`relative transition-all duration-500 ${
+                          isHovered ? "scale-110" : "scale-100"
+                        }`}
+                      >
+                        {/* Glow effect on hover */}
+                        {isHovered && (
+                          <div
+                            className="absolute inset-0 rounded-full blur-2xl scale-125 animate-pulse"
+                            style={{
+                              background: isCompleted
+                                ? "rgba(16, 185, 129, 0.3)"
+                                : isInProgress
+                                ? "rgba(255, 159, 67, 0.3)"
+                                : "rgba(156, 163, 175, 0.3)",
+                            }}
+                          ></div>
+                        )}
+
+                        {/* Main circle */}
+                        <div
+                          className="relative w-[180px] h-[180px] rounded-full flex flex-col items-center justify-center cursor-pointer transition-all duration-500 shadow-[0_20px_60px_rgba(0,0,0,0.2)] hover:shadow-[0_30px_80px_rgba(0,0,0,0.3)]"
+                          style={{
+                            background: isCompleted
+                              ? "linear-gradient(to bottom right, #10b981, #059669)"
+                              : isInProgress
+                              ? "linear-gradient(to bottom right, #ff9f43, #f97316)"
+                              : "linear-gradient(to bottom right, #9ca3af, #6b7280)",
+                          }}
+                        >
+                          {/* Module number badge */}
+                          <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold text-lg shadow-xl z-10">
+                            {module.id}
+                          </div>
+
+                          {/* Module name */}
+                          <h3 className="gen-typo text-3xl tracking-[-1.5px] text-white font-bold drop-shadow-lg">
+                            {module.name}
+                          </h3>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Features below circle */}
+                    <div
+                      className={`transition-all duration-300 ${
+                        isHovered
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-80 translate-y-2"
+                      }`}
+                    >
+                      <ul className="space-y-2 text-center">
+                        {module.features.map((feature, idx) => (
+                          <li
+                            key={idx}
+                            className="text-xs text-gray-700 font-medium flex items-center justify-center gap-2"
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                isCompleted
+                                  ? "bg-green-500"
+                                  : isInProgress
+                                  ? "bg-brand-orange"
+                                  : "bg-gray-400"
+                              }`}
+                            ></span>
+                            <span>{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 py-6 relative z-10">
+        <div className="max-w-[1800px] mx-auto px-8">
+          <p className="text-xs text-gray-500 font-medium text-center">
+            © 2024 JOBTRACKAI — Building with clarity and purpose.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+
+
+
+
+
+
+-------------------------------------------------------
+
+  post 2 code : 
+  "use client";
+
+export default function FeatureArchitecturePage() {
+  return (
+    <div className="min-h-screen bg-white flex flex-col relative overflow-hidden">
+      {/* Subtle background */}
+      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-brand-orange/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+      {/* Header - Bordure supprimée pour fluidité */}
+      <header className="bg-white/80 backdrop-blur-md relative z-10">
+        <div className="max-w-[1800px] mx-auto px-8 py-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-white font-bold text-2xl hover:bg-green-500 transition-colors duration-300">
+              J
+            </div>
+            <span className="font-bold text-3xl tracking-tight text-black">
+              JobTrackAI
+            </span>
+          </div>
+          <div className="inline-block px-4 py-2 bg-green-100 border border-green-300 rounded-full mb-4">
+            <span className="text-green-700 font-bold text-xs uppercase tracking-widest">
+              Feature Architecture
+            </span>
+          </div>
+          <h1 className="gen-typo text-[56px] sm:text-[64px] leading-[0.92] tracking-[-3px] mb-4 text-black">
+            HOW WE BUILD FEATURES
+          </h1>
+          <p className="text-lg text-gray-600 font-medium max-w-3xl">
+            A clear, layered architecture showing the chronological order of
+            implementation.
+          </p>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 relative z-10 py-12 flex flex-col items-center">
+        <div className="w-full max-w-[1800px] mx-auto px-8">
+          {/* Decision Box - Start */}
+          <div className="mb-8">
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-6 max-w-sm mx-auto shadow-sm">
+              <h3 className="font-bold text-lg mb-4 text-center text-amber-900">
+                Does this feature require data storage?
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 justify-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-sm font-semibold text-gray-700">
+                    YES → Database + Repository
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 justify-center">
+                  <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                  <span className="text-sm font-semibold text-gray-700">
+                    NO → Service only
+                  </span>
+                </div>
+              </div>
+            </div>
+            {/* Arrow down connecting decision to flow */}
+            <div className="flex justify-center my-2">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                <path
+                  d="M20 0 L20 30 L16 26 M20 30 L24 26"
+                  stroke="#10b981"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Horizontal Flow - Connection Line removed, items centered */}
+          <div className="relative">
+            {/* Layers in horizontal flow with Arrows only */}
+            <div
+              className="relative flex justify-between items-center gap-4"
+              style={{ zIndex: 2 }}
+            >
+              {/* Step 1: Database (Optional) */}
+              <div className="flex-1 self-stretch">
+                <div className="bg-gradient-to-br from-gray-100 to-gray-200 border-2 border-gray-400 border-dashed rounded-2xl p-6 min-h-[200px] flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-gray-700 uppercase tracking-widest bg-gray-300 px-3 py-1 rounded-full">
+                        Step 1 - Optional
+                      </span>
+                    </div>
+                    <h3 className="gen-typo text-2xl tracking-[-0.5px] text-gray-900 mb-3">
+                      Database
+                    </h3>
+                    <p className="text-xs text-gray-600 font-medium">
+                      Persistent data storage
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-300">
+                    <p className="text-xs text-gray-500 italic">
+                      If data storage is needed
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex-shrink-0 text-green-500">
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                  <path
+                    d="M0 12 L30 12 L26 8 M30 12 L26 16"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              {/* Step 2: Repository (Optional) */}
+              <div className="flex-1 self-stretch">
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-300 border-dashed rounded-2xl p-6 min-h-[200px] flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-orange-700 uppercase tracking-widest bg-orange-200 px-3 py-1 rounded-full">
+                        Step 2 - Optional
+                      </span>
+                    </div>
+                    <h3 className="gen-typo text-2xl tracking-[-0.5px] text-orange-900 mb-3">
+                      Repository
+                    </h3>
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      Direct database access
+                    </p>
+                    <ul className="space-y-1">
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-orange-500">•</span>
+                        <span>CRUD operations</span>
+                      </li>
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-orange-500">•</span>
+                        <span>No business logic</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex-shrink-0 text-green-500">
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                  <path
+                    d="M0 12 L30 12 L26 8 M30 12 L26 16"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              {/* Step 3: Service Layer */}
+              <div className="flex-1 self-stretch">
+                <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-400 rounded-2xl p-6 min-h-[200px] flex flex-col justify-between shadow-lg h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-green-700 uppercase tracking-widest bg-green-200 px-3 py-1 rounded-full">
+                        Step 3 - Required
+                      </span>
+                    </div>
+                    <h3 className="gen-typo text-2xl tracking-[-0.5px] text-green-900 mb-3">
+                      Service Layer
+                    </h3>
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      Business logic
+                    </p>
+                    <ul className="space-y-1">
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-green-500">•</span>
+                        <span>Business rules</span>
+                      </li>
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-green-500">•</span>
+                        <span>Validations</span>
+                      </li>
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-green-500">•</span>
+                        <span>Orchestration</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex-shrink-0 text-green-500">
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                  <path
+                    d="M0 12 L30 12 L26 8 M30 12 L26 16"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              {/* Step 4: API Endpoints */}
+              <div className="flex-1 self-stretch">
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-400 rounded-2xl p-6 min-h-[200px] flex flex-col justify-between shadow-lg h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-purple-700 uppercase tracking-widest bg-purple-200 px-3 py-1 rounded-full">
+                        Step 4 - Required
+                      </span>
+                    </div>
+                    <h3 className="gen-typo text-2xl tracking-[-0.5px] text-purple-900 mb-3">
+                      API Boundary
+                    </h3>
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      Contract definition
+                    </p>
+                    <ul className="space-y-1">
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-purple-500">•</span>
+                        <span>Expose endpoints</span>
+                      </li>
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-purple-500">•</span>
+                        <span>Data flow control</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div className="flex-shrink-0 text-green-500">
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="none">
+                  <path
+                    d="M0 12 L30 12 L26 8 M30 12 L26 16"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
+
+              {/* Step 5: Frontend */}
+              <div className="flex-1 self-stretch">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-400 rounded-2xl p-6 min-h-[200px] flex flex-col justify-between shadow-lg h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-xs font-bold text-blue-700 uppercase tracking-widest bg-blue-200 px-3 py-1 rounded-full">
+                        Step 5 - Required
+                      </span>
+                    </div>
+                    <h3 className="gen-typo text-2xl tracking-[-0.5px] text-blue-900 mb-3">
+                      Frontend
+                    </h3>
+                    <p className="text-xs text-gray-600 font-medium mb-2">
+                      User interface
+                    </p>
+                    <ul className="space-y-1">
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-blue-500">•</span>
+                        <span>Hooks (Feature API)</span>
+                      </li>
+                      <li className="text-xs text-gray-600 flex items-start gap-1">
+                        <span className="text-blue-500">•</span>
+                        <span>UI Components</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Principle - Redesigned as big title */}
+          <div className="mt-24 text-center max-w-4xl mx-auto">
+            <h2 className="text-4xl sm:text-5xl font-bold text-black mb-4 tracking-tight leading-tight">
+              Key Principle: We build from data to UI.
+            </h2>
+            <p className="text-xl sm:text-2xl text-gray-500 font-medium leading-relaxed">
+              Each layer depends only on the previous one.{" "}
+              <br className="hidden sm:block" />
+              No layer bypasses another. Clean separation of concerns.
+            </p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 py-6 relative z-10">
+        <div className="max-w-[1800px] mx-auto px-8">
+          <p className="text-xs text-gray-500 font-medium text-center">
+            © 2024 JOBTRACKAI — Building with clarity and purpose.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+-----------------------------------
+
+post 3 code : 
+
+"use client";
+
+import { useState } from "react";
+
+const WORKFLOW_STEPS = [
+  {
+    id: 1,
+    name: "Issue",
+    description: "Problem definition",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+      </svg>
+    ),
+    color: "from-purple-50 to-purple-100",
+    borderColor: "border-purple-400",
+    dotColor: "bg-purple-500",
+  },
+  {
+    id: 2,
+    name: "Task Scope",
+    description: "Clear boundaries",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
+      </svg>
+    ),
+    color: "from-blue-50 to-blue-100",
+    borderColor: "border-blue-400",
+    dotColor: "bg-blue-500",
+  },
+  {
+    id: 3,
+    name: "Commit",
+    description: "Small & frequent",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+        <polyline points="17 21 17 13 7 13 7 21" />
+        <polyline points="7 3 7 8 15 8" />
+      </svg>
+    ),
+    color: "from-green-50 to-green-100",
+    borderColor: "border-green-400",
+    dotColor: "bg-green-500",
+  },
+  {
+    id: 4,
+    name: "Pull Request",
+    description: "Propose changes",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <circle cx="18" cy="18" r="3" />
+        <circle cx="6" cy="6" r="3" />
+        <path d="M13 6h3a2 2 0 0 1 2 2v7" />
+        <line x1="6" y1="9" x2="6" y2="21" />
+      </svg>
+    ),
+    color: "from-orange-50 to-orange-100",
+    borderColor: "border-orange-400",
+    dotColor: "bg-orange-500",
+  },
+  {
+    id: 5,
+    name: "Review",
+    description: "Quality check",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    ),
+    color: "from-pink-50 to-pink-100",
+    borderColor: "border-pink-400",
+    dotColor: "bg-pink-500",
+  },
+  {
+    id: 6,
+    name: "Merge",
+    description: "Ship to main",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+      </svg>
+    ),
+    color: "from-emerald-50 to-emerald-100",
+    borderColor: "border-emerald-400",
+    dotColor: "bg-emerald-500",
+  },
+  {
+    id: 7,
+    name: "Daily Sync",
+    description: "Stay aligned",
+    icon: (
+      <svg
+        width="32"
+        height="32"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <polyline points="23 4 23 10 17 10" />
+        <polyline points="1 20 1 14 7 14" />
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+      </svg>
+    ),
+    color: "from-indigo-50 to-indigo-100",
+    borderColor: "border-indigo-400",
+    dotColor: "bg-indigo-500",
+  },
+];
+
+export default function GitHubWorkflowPost() {
+  const [hoveredStep, setHoveredStep] = useState<number | null>(null);
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col relative overflow-hidden">
+      {/* Subtle background gradients */}
+      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-md relative z-10">
+        <div className="max-w-[1800px] mx-auto px-8 py-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center text-white font-bold text-2xl hover:bg-brand-orange transition-colors duration-300">
+              J
+            </div>
+            <span className="font-bold text-3xl tracking-tight text-black">
+              JobTrackAI
+            </span>
+          </div>
+
+          <h1 className="gen-typo text-[48px] sm:text-[64px] leading-[0.92] tracking-[-3px] mb-6 text-black max-w-5xl">
+            WHAT BUILDING AS A TEAM
+            <br />
+            TAUGHT US ABOUT DISCIPLINE
+          </h1>
+          <p className="text-xl text-gray-600 font-medium max-w-3xl leading-relaxed">
+            Good code is not enough — process matters. When you work with
+            someone else, messy habits collapse quickly.
+          </p>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 relative z-10 py-16">
+        <div className="max-w-[1800px] mx-auto px-8">
+          {/* Workflow Diagram */}
+          <div className="mb-20">
+            <h2 className="gen-typo text-[32px] tracking-[-1.5px] mb-12 text-center text-gray-900">
+              OUR GITHUB WORKFLOW
+            </h2>
+
+            {/* Desktop: Horizontal Flow */}
+            <div className="hidden lg:block">
+              <div className="relative flex justify-between items-center gap-4">
+                {WORKFLOW_STEPS.map((step, index) => (
+                  <div key={step.id} className="flex items-center flex-1">
+                    {/* Step Card */}
+                    <div
+                      className="flex-1"
+                      onMouseEnter={() => setHoveredStep(step.id)}
+                      onMouseLeave={() => setHoveredStep(null)}
+                    >
+                      <div
+                        className={`bg-gradient-to-br ${step.color} border-2 ${step.borderColor} rounded-2xl p-6 transition-all duration-300 cursor-pointer ${
+                          hoveredStep === step.id
+                            ? "shadow-xl scale-105 -translate-y-2"
+                            : "shadow-md"
+                        }`}
+                      >
+                        <div className="flex flex-col items-center text-center">
+                          <div className="mb-3 text-gray-700">{step.icon}</div>
+                          <h3 className="gen-typo text-xl tracking-[-0.5px] mb-2">
+                            {step.name}
+                          </h3>
+                          <p className="text-xs text-gray-600 font-medium">
+                            {step.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Arrow (except after last step) */}
+                    {index < WORKFLOW_STEPS.length - 1 && (
+                      <div className="flex-shrink-0 mx-2 text-gray-400">
+                        <svg
+                          width="32"
+                          height="24"
+                          viewBox="0 0 32 24"
+                          fill="none"
+                        >
+                          <path
+                            d="M0 12 L24 12 L20 8 M24 12 L20 16"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Mobile: Vertical Flow */}
+            <div className="lg:hidden space-y-6">
+              {WORKFLOW_STEPS.map((step) => (
+                <div key={step.id}>
+                  <div
+                    className={`bg-gradient-to-br ${step.color} border-2 ${step.borderColor} rounded-2xl p-6 shadow-md`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="text-gray-700">{step.icon}</div>
+                      <div className="flex-1">
+                        <h3 className="gen-typo text-lg tracking-[-0.5px] mb-1">
+                          {step.name}
+                        </h3>
+                        <p className="text-xs text-gray-600 font-medium">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {step.id < WORKFLOW_STEPS.length && (
+                    <div className="flex justify-center py-2">
+                      <svg
+                        width="24"
+                        height="32"
+                        viewBox="0 0 24 32"
+                        fill="none"
+                      >
+                        <path
+                          d="M12 0 L12 24 L8 20 M12 24 L16 20"
+                          stroke="#9ca3af"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Statement */}
+          <div className="text-center max-w-4xl mx-auto">
+            <h2 className="text-3xl sm:text-4xl font-bold text-black mb-6 tracking-tight leading-tight">
+              It's not glamorous, but this is what makes a project survive
+              beyond the prototype stage.
+            </h2>
+            <p className="text-xl sm:text-2xl text-gray-500 font-medium leading-relaxed">
+              If you're serious about building something real, treat your side
+              project like a production system —
+              <span className="text-brand-orange font-bold">
+                {" "}
+                even if you're "just experimenting"
+              </span>
+              .
+            </p>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-200 py-6 relative z-10">
+        <div className="max-w-[1800px] mx-auto px-8">
+          <p className="text-xs text-gray-500 font-medium text-center">
+            © 2024 JOBTRACKAI — Building with clarity and purpose.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+ 
+----------------------------------------------------------

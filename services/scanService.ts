@@ -1,17 +1,8 @@
 // src/services/scanService.ts
 
-// Ajoute ces imports en haut
 import type { RawMail, MailAnalysisService } from "@/services/ai/mailAnalysis";
-import type { AnalysisFileWriter } from "@/infra/logging/analysisFileWriter";
+import { JobIngestionService } from "@/services/jobDomain/JobIngestionService";
 
-export interface MailReaderApi {
-  getRawMailById(
-    userId: string,
-    provider: MailProvider,
-    messageId: string
-  ): Promise<RawMail>;
-}
-// Ajoute une interface SANS toucher Module 4 :
 export interface MailReaderApi {
   getRawMailById(
     userId: string,
@@ -205,7 +196,10 @@ export class ScanService {
     // nouveaux ajouts pour Module 5
     private mailReader: MailReaderApi,
     private mailAnalysis: MailAnalysisService,
-    private analysisWriter: AnalysisFileWriter,
+
+    // module 6 job ingestion
+    private jobIngestion: JobIngestionService,
+
     // fin nouveaux ajouts
 
     opts?: {
@@ -249,7 +243,7 @@ export class ScanService {
 
       rangeStartAt: startIso,
       rangeEndAt: endIso,
-      cursorAt: startIso, // ✅ pas arrondi: curseur exact
+      cursorAt: startIso, //  pas arrondi: curseur exact
 
       processedCount: 0,
       totalCount,
@@ -267,6 +261,7 @@ export class ScanService {
    * - update cursorAt + processedCount
    * - finalize + update checkpoint si terminé
    */
+  // RUN BATCH (v4) — fonctionnel + corrige processedCount + cohérence finalize
   async runBatch(userId: string, scanId: string): Promise<BatchResult> {
     const scan = await this.mustGetScan(userId, scanId);
 
@@ -283,17 +278,16 @@ export class ScanService {
 
     // Terminé ?
     if (new Date(running.cursorAt) >= new Date(running.rangeEndAt)) {
-      // assure cohérence progress
       await this.scans.update(userId, scanId, {
         processedCount: running.totalCount,
         shouldContinue: false,
+        errorMessage: null,
       });
 
       const finalized = await this.scans.finalize(userId, scanId, {
         finalStatus: "completed",
       });
 
-      // ✅ checkpoint sur range_end_at
       await this.checkpoints.upsertLastSuccessAt(
         userId,
         running.provider,
@@ -315,11 +309,10 @@ export class ScanService {
       const idsOut = await this.providerApi.getAllMessageIdsInRange({
         startIso: windowStart,
         endIso: windowEnd,
-        maxMessages: this.rules.maxMessages, // safe cap
+        maxMessages: this.rules.maxMessages,
       });
 
       if (!idsOut.ok) {
-        // Cas extrême: trop d'IDs dans un seul batch (fenêtre)
         const failed = await this.scans.finalize(userId, scanId, {
           finalStatus: "failed",
           errorMessage: "TOO_MANY_MESSAGES_IN_BATCH",
@@ -329,47 +322,101 @@ export class ScanService {
 
       const ids = idsOut.ids;
 
-      // v0: Réel traitement AI
-      for (const id of ids) {
-        console.log("Processing message id:", id);
+      // Rien à traiter: on avance la fenêtre, sinon risque de boucle infinie
+      if (ids.length === 0) {
+        const shouldContinue =
+          new Date(windowEnd) < new Date(running.rangeEndAt);
 
-        const rawMail = await this.mailReader.getRawMailById(
-          userId,
-          running.provider,
-          id
-        );
-        const analysis = await this.mailAnalysis.analyzeMail(rawMail);
-
-        console.log("AI:", {
-          id,
-          isJobRelated: analysis.isJobRelated,
-          status: analysis.status,
-          company: analysis.company,
-          position: analysis.position,
-          confidence: analysis.confidence,
-          tokensUsed: analysis.tokensUsed,
+        const updated = await this.scans.update(userId, scanId, {
+          cursorAt: windowEnd,
+          shouldContinue,
+          errorMessage: null,
         });
 
-        await this.analysisWriter.appendLine(
-          JSON.stringify({
-            at: new Date().toISOString(),
-            scanId,
-            provider: running.provider,
-            messageId: id,
-            isJobRelated: analysis.isJobRelated,
-            status: analysis.status,
-            company: analysis.company,
-            position: analysis.position,
-            confidence: analysis.confidence,
-            tokensUsed: analysis.tokensUsed,
-          })
-        );
+        if (!shouldContinue) {
+          await this.scans.update(userId, scanId, {
+            processedCount: running.totalCount,
+            shouldContinue: false,
+            errorMessage: null,
+          });
+
+          const finalized = await this.scans.finalize(userId, scanId, {
+            finalStatus: "completed",
+          });
+
+          await this.checkpoints.upsertLastSuccessAt(
+            userId,
+            running.provider,
+            running.rangeEndAt
+          );
+
+          return { scan: finalized };
+        }
+
+        return { scan: updated };
       }
 
-      // Update progress
+      let succeeded = 0;
+      let localFailed = 0;
+
+      let hasExternalFailure = false;
+      let externalFailureMsg: string | null = null;
+
+      for (const id of ids) {
+        try {
+          const rawMail = await this.mailReader.getRawMailById(
+            userId,
+            running.provider,
+            id
+          );
+
+          const analysis = await this.mailAnalysis.analyzeMail(rawMail);
+
+          await this.jobIngestion.ingestAnalyzedMail({
+            userId,
+            provider: running.provider,
+            rawMail,
+            analysis,
+          });
+
+          succeeded += 1;
+
+          console.log("Processed message:", { id });
+        } catch (e: unknown) {
+          const msg = this.stringifyError(e);
+
+          //  Si c'est AI/Provider/Supabase => on stoppe le batch et on pause
+          if (isRetryableExternalFailure(msg)) {
+            hasExternalFailure = true;
+            externalFailureMsg = msg;
+            break;
+          }
+
+          //  Sinon : erreur locale => on skip et on continue
+          localFailed += 1;
+          console.log("Local message failure (skipped):", { id, error: msg });
+        }
+      }
+
+      //  Batch échoue uniquement si external failure
+      // IMPORTANT: on n'avance pas cursorAt, et on ne change pas processedCount
+      if (hasExternalFailure) {
+        const paused = await this.scans.update(userId, scanId, {
+          status: "paused",
+          errorMessage: externalFailureMsg ?? "RETRYABLE_EXTERNAL_FAILURE",
+          shouldContinue: true,
+        });
+
+        return { scan: paused };
+      }
+
+      // BUGFIX: processedCount doit compter les messages "tentés"
+      // car on avance cursorAt => ces messages ne seront pas retentés.
+      const attempted = succeeded + localFailed;
+
       const newProcessed = Math.min(
         running.totalCount,
-        Math.max(0, running.processedCount) + ids.length
+        Math.max(0, running.processedCount) + attempted
       );
 
       const shouldContinue = new Date(windowEnd) < new Date(running.rangeEndAt);
@@ -378,14 +425,21 @@ export class ScanService {
         cursorAt: windowEnd,
         processedCount: newProcessed,
         shouldContinue,
+        errorMessage: localFailed > 0 ? `LOCAL_FAILED_${localFailed}` : null,
       });
 
       if (!shouldContinue) {
+        // Force cohérence: scan completed => processedCount = totalCount
+        await this.scans.update(userId, scanId, {
+          processedCount: running.totalCount,
+          shouldContinue: false,
+          errorMessage: null,
+        });
+
         const finalized = await this.scans.finalize(userId, scanId, {
           finalStatus: "completed",
         });
 
-        // checkpoint sur range_end_at (pas cursor)
         await this.checkpoints.upsertLastSuccessAt(
           userId,
           running.provider,
@@ -396,13 +450,18 @@ export class ScanService {
       }
 
       return { scan: updated };
-    } catch (e) {
+    } catch (e: unknown) {
       const msg = this.stringifyError(e);
-      const failed = await this.scans.finalize(userId, scanId, {
-        finalStatus: "failed",
+
+      // Ici c'est généralement providerApi/getAllMessageIds qui a foiré => external
+      const paused = await this.scans.update(userId, scanId, {
+        status: "paused",
         errorMessage: msg,
+        shouldContinue: true,
+        // cursor inchangé car on n'a jamais réussi à compléter le batch
       });
-      return { scan: failed };
+
+      return { scan: paused };
     }
   }
 
@@ -423,7 +482,7 @@ export class ScanService {
       finalStatus: "canceled",
     });
 
-    // ❌ pas de checkpoint update si canceled
+    // pas de checkpoint update si canceled
     return { scan: canceled };
   }
 
@@ -532,4 +591,46 @@ export class ScanService {
       return "UNKNOWN_ERROR";
     }
   }
+}
+
+// Heuristique MVP :
+// si erreur AI / Provider / Supabase => on PAUSE et on n'avance pas le curseur
+
+function isRetryableExternalFailure(msg: string): boolean {
+  const m = msg.toLowerCase();
+
+  // AI
+  if (
+    m.includes("openai") ||
+    m.includes("rate limit") ||
+    m.includes("quota") ||
+    m.includes("timeout") ||
+    m.includes("etimedout") ||
+    m.includes("econnreset")
+  )
+    return true;
+
+  // Provider (gmail/outlook)
+  if (
+    m.includes("gmail") ||
+    m.includes("outlook") ||
+    m.includes("googleapis") ||
+    m.includes("graph.microsoft") ||
+    m.includes("429") ||
+    m.includes("503")
+  )
+    return true;
+
+  // Supabase / DB
+  if (
+    m.includes("supabase") ||
+    m.includes("postgrest") ||
+    m.includes("jwt") ||
+    m.includes("permission") ||
+    m.includes("rls") ||
+    m.includes("sql")
+  )
+    return true;
+
+  return false;
 }

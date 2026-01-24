@@ -1,3 +1,5 @@
+// app/api/mail/connect/route.ts
+
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
