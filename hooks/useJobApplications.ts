@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 
 // ========================================
 // 1. TYPES DU DOMAINE (UI)
-// Ce sont les types complets que tes composants (Drawer, etc.) attendent.
 // ========================================
 
 export type JobStatus =
@@ -16,7 +15,6 @@ export type JobStatus =
 export type JobMailProvider = "gmail" | "outlook" | "unknown";
 
 export type JobApplication = {
-  // Champs réels (API + DB)
   id: string;
   company: string | null;
   position: string | null;
@@ -26,7 +24,6 @@ export type JobApplication = {
   last_activity_at: string;
   updated_at: string;
 
-  // Champs "Legacy/UI" (valeurs par défaut générées par le frontend)
   user_id: string;
   applied_at: string | null;
   created_by: "auto" | "user";
@@ -34,12 +31,11 @@ export type JobApplication = {
 };
 
 export type JobEmail = {
-  // Champs réels (API + DB)
   id: string;
   subject: string | null;
   from_text: string | null;
   snippet: string | null;
-  received_at: string;
+  received_at: string; // C'est ici que le Drawer lit la date
   status: JobStatus;
   company: string | null;
   position: string | null;
@@ -47,7 +43,6 @@ export type JobEmail = {
   application_id: string | null;
   archived: boolean;
 
-  // Champs "Legacy/UI"
   user_id: string;
   provider: JobMailProvider;
   provider_message_id: string;
@@ -72,10 +67,9 @@ export type GetApplicationsResponse = {
 
 // ========================================
 // 2. TYPES DE L'API (DTOs)
-// Ce sont les types partiels que l'API renvoie réellement.
+// Correction : On accepte camelCase ET snake_case pour matcher le Backend
 // ========================================
 
-// Structure brute d'une application venant de l'API
 type ApiApplication = {
   id: string;
   company?: string | null;
@@ -83,33 +77,50 @@ type ApiApplication = {
   status?: JobStatus;
   notes?: string | null;
   archived?: boolean;
+
+  // Support double format
   last_activity_at?: string;
+  lastActivityAt?: string;
+
   updated_at?: string;
+  updatedAt?: string;
 };
 
-// Structure brute d'un email venant de l'API
 type ApiEmail = {
   id: string;
   subject?: string | null;
+
+  // Support double format (Backend vs DB)
   from_text?: string | null;
+  fromText?: string | null;
+
   snippet?: string | null;
+
   received_at?: string;
+  receivedAt?: string; // 👈 C'est lui que le backend envoie !
+
   status?: JobStatus;
   company?: string | null;
   position?: string | null;
+
   event_type?: string | null;
+  eventType?: string | null;
+
   application_id?: string | null;
+  applicationId?: string | null;
+
   archived?: boolean;
+  isArchived?: boolean;
+
   provider_message_id?: string;
+  providerMessageId?: string;
 };
 
-// Structure brute du Bucket venant de l'API
 type ApiBucket = {
   app: ApiApplication;
   emails: ApiEmail[];
 };
 
-// Réponse globale de l'API
 type ApiApplicationResponse = {
   applications: ApiBucket[];
   total: number;
@@ -125,7 +136,6 @@ type ApiApplicationResponse = {
 function mapApiToDomain(
   apiResponse: ApiApplicationResponse | null | undefined
 ): GetApplicationsResponse {
-  // Valeur par défaut si l'API échoue ou renvoie null
   const emptyResponse: GetApplicationsResponse = {
     applications: [],
     total: 0,
@@ -135,8 +145,8 @@ function mapApiToDomain(
       all: 0,
       applied: 0,
       interview: 0,
-      rejection: 0,
       offer: 0,
+      rejection: 0,
       unknown: 0,
     },
   };
@@ -146,16 +156,22 @@ function mapApiToDomain(
   }
 
   const mappedApps: Bucket[] = apiResponse.applications.map((b: ApiBucket) => {
-    // Reconstruction de l'Application complète avec valeurs par défaut pour les champs manquants
+    // Mapping robuste pour l'Application
     const app: JobApplication = {
       id: b.app.id,
-      company: b.app.company ?? null, // Utilisation de ?? (Nullish coalescing)
+      company: b.app.company ?? null,
       position: b.app.position ?? null,
       status: b.app.status ?? "unknown",
       notes: b.app.notes ?? null,
       archived: !!b.app.archived,
-      last_activity_at: b.app.last_activity_at ?? new Date().toISOString(),
-      updated_at: b.app.updated_at ?? new Date().toISOString(),
+
+      // On cherche d'abord le camelCase, puis le snake_case, puis fallback
+      last_activity_at:
+        b.app.lastActivityAt ??
+        b.app.last_activity_at ??
+        new Date().toISOString(),
+      updated_at:
+        b.app.updatedAt ?? b.app.updated_at ?? new Date().toISOString(),
 
       // Fillers UI
       user_id: "current-user",
@@ -164,24 +180,30 @@ function mapApiToDomain(
       created_at: new Date().toISOString(),
     };
 
-    // Reconstruction des Emails
+    // Mapping robuste pour les Emails
     const emails: JobEmail[] = (b.emails || []).map((e: ApiEmail) => ({
       id: e.id,
       subject: e.subject ?? null,
-      from_text: e.from_text ?? null,
+
+      // Mapping robuste
+      from_text: e.fromText ?? e.from_text ?? null,
       snippet: e.snippet ?? null,
-      received_at: e.received_at ?? new Date().toISOString(),
+
+      // 👇 LE FIX EST ICI : On lit receivedAt en priorité
+      received_at: e.receivedAt ?? e.received_at ?? new Date().toISOString(),
+
       status: e.status ?? "unknown",
       company: e.company ?? null,
       position: e.position ?? null,
-      event_type: e.event_type ?? null,
-      application_id: e.application_id ?? app.id,
-      archived: !!e.archived,
+      event_type: e.eventType ?? e.event_type ?? null,
+      application_id: e.applicationId ?? e.application_id ?? app.id,
+      archived: !!(e.isArchived ?? e.archived),
 
       // Fillers UI
       user_id: "current-user",
       provider: "gmail",
-      provider_message_id: e.provider_message_id ?? "unknown",
+      provider_message_id:
+        e.providerMessageId ?? e.provider_message_id ?? "unknown",
       body_excerpt: e.snippet ?? null,
       updated_at: new Date().toISOString(),
     }));
@@ -235,14 +257,12 @@ export function useJobApplications() {
         const res = await fetch(`/api/applications?${searchParams}`);
         if (!res.ok) throw new Error("Failed to fetch applications");
 
-        // Typage de la réponse brute JSON
         const rawData = (await res.json()) as ApiApplicationResponse;
 
         return mapApiToDomain(rawData);
       } catch (err) {
         console.error("Fetch error:", err);
         setError("Impossible de charger les données");
-        // Retourne une structure vide valide en cas d'erreur réseau
         return mapApiToDomain(null);
       } finally {
         setLoading(false);
@@ -306,7 +326,6 @@ export function useJobApplications() {
     async (id: string, data: Partial<JobEmail>) => {
       setLoading(true);
       try {
-        // Construction explicite du body pour ne pas envoyer de champs UI inutiles
         const body = {
           company: data.company,
           position: data.position,

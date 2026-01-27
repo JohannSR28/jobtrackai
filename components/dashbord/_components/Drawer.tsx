@@ -1,4 +1,3 @@
-// app/job-domain-test-fake/_components/Drawer.tsx
 "use client";
 
 import {
@@ -6,6 +5,7 @@ import {
   statusDotClass,
 } from "./ui";
 import type { Bucket, JobStatus } from "@/hooks/useJobApplications";
+
 type DrawerProps = Readonly<{
   selectedBucket: Bucket | null;
   busy: boolean;
@@ -36,6 +36,13 @@ export function Drawer(props: DrawerProps) {
   if (!props.selectedBucket) return null;
   const b = props.selectedBucket;
 
+  // 👇 CORRECTION ICI : Utilisation de received_at
+  const sortedEmails = [...b.emails].sort((a, b) => {
+    const dateA = a.received_at ? new Date(a.received_at).getTime() : 0;
+    const dateB = b.received_at ? new Date(b.received_at).getTime() : 0;
+    return dateB - dateA;
+  });
+
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/40" onClick={props.onClose} />
@@ -52,7 +59,6 @@ export function Drawer(props: DrawerProps) {
                   {b.app.position ?? "—"}
                 </div>
 
-                {/* ✨ MODIFICATION : Boutons d'actions intégrés ici */}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {/* Status Button */}
                   <button
@@ -77,12 +83,10 @@ export function Drawer(props: DrawerProps) {
                     </span>
                   </button>
 
-                  {/* Separator & Count */}
                   <div className="ml-1 text-xs text-slate-400">
                     • {b.emails.length} email{b.emails.length !== 1 ? "s" : ""}
                   </div>
 
-                  {/* Archive Button (Mini) */}
                   <button
                     type="button"
                     className="rounded-lg bg-amber-500/10 px-2 py-1.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/30 hover:bg-amber-500/20 disabled:opacity-60 transition-all"
@@ -92,7 +96,6 @@ export function Drawer(props: DrawerProps) {
                     {b.app.archived ? "Unarchive" : "Archive"}
                   </button>
 
-                  {/* Delete Button (Mini) */}
                   <button
                     type="button"
                     className="rounded-lg bg-red-500/10 px-2 py-1.5 text-xs font-semibold text-red-200 ring-1 ring-red-400/30 hover:bg-red-500/20 disabled:opacity-60 transition-all"
@@ -142,8 +145,6 @@ export function Drawer(props: DrawerProps) {
             </div>
           </div>
 
-          {/* 🗑️ ANCIENNE SECTION "Actions" SUPPRIMÉE ICI */}
-
           <div className="px-4 pt-4 pb-4">
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold text-slate-200">Emails</div>
@@ -153,7 +154,7 @@ export function Drawer(props: DrawerProps) {
             </div>
 
             <div className="mt-2 space-y-2">
-              {b.emails.map((em) => (
+              {sortedEmails.map((em) => (
                 <div key={em.id} className="bg-white/5 rounded-xl px-3 py-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -172,6 +173,7 @@ export function Drawer(props: DrawerProps) {
                         >
                           {em.status}
                         </span>
+                        {/* 👇 CORRECTION ICI AUSSI : received_at */}
                         {em.received_at ? (
                           <span className="text-slate-500">
                             {" "}

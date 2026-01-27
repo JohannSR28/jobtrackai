@@ -131,7 +131,7 @@ export class JobEmailRepository {
       .eq("user_id", input.userId)
       .eq("application_id", input.applicationId)
       .eq("archived", false)
-      .order("received_at", { ascending: true })
+      .order("received_at", { ascending: false })
       .returns<JobEmailRow[]>();
 
     if (error) throw error;

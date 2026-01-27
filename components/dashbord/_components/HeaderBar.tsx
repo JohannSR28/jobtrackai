@@ -11,6 +11,8 @@ import {
 
 export function HeaderBar(props: {
   points: number;
+  walletLoading?: boolean; // 👈 AJOUT : Prop pour l'état de chargement du solde
+
   email: string;
   busy: boolean;
   poll: () => void;
@@ -24,6 +26,9 @@ export function HeaderBar(props: {
   onOpenScanModal: () => void;
   onPauseOrResume: () => void;
   onStopScan: () => void;
+
+  onLogout: () => void;
+  onDeleteAccount: () => void;
 }) {
   const scanActionVisible = props.scanRunning;
 
@@ -33,7 +38,15 @@ export function HeaderBar(props: {
         <div className="text-2xl font-black">Bienvenue sur JobTrackAI</div>
 
         <div className="mt-2 flex items-center gap-4 text-sm text-slate-300">
-          <span className="text-slate-200">{props.points} points</span>
+          {/* 👇 MODIFICATION : Effet de chargement Skeleton */}
+          {props.walletLoading ? (
+            <div className="h-5 w-24 animate-pulse rounded bg-white/10" />
+          ) : (
+            <span className="font-semibold text-slate-200 transition-all duration-300">
+              {props.points} points
+            </span>
+          )}
+
           <span className="text-slate-500">•</span>
           <span className="truncate">{props.email}</span>
         </div>
@@ -105,7 +118,7 @@ export function HeaderBar(props: {
             label="Se déconnecter"
             onClick={() => {
               props.setProfileMenuOpen(false);
-              alert("Fake: logout");
+              props.onLogout();
             }}
           />
           <MenuItem
@@ -138,9 +151,7 @@ export function HeaderBar(props: {
             label="Supprimer définitivement son compte"
             onClick={() => {
               props.setProfileMenuOpen(false);
-              const ok = confirm("⚠️ Supprimer définitivement ? (fake)");
-              if (!ok) return;
-              alert("Fake: account deleted");
+              props.onDeleteAccount();
             }}
           />
         </Dropdown>

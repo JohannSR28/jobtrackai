@@ -45,6 +45,8 @@ export type InitMode =
   | { mode: "since_last"; endIso?: string }
   | { mode: "custom"; startIso: string; endIso: string };
 
+// --- HELPERS ---
+
 async function readErrorMessage(res: Response): Promise<string> {
   try {
     const data = (await res.json()) as { error?: unknown; details?: unknown };
@@ -62,16 +64,22 @@ function isFinalStatus(status: ScanStatus) {
   return status === "completed" || status === "canceled" || status === "failed";
 }
 
+// --- HOOK PRINCIPAL ---
+
 export function useScanTester(opts?: { delayMs?: number }) {
   const delayMs = typeof opts?.delayMs === "number" ? opts.delayMs : 0;
 
+  // States
   const [scan, setScan] = useState<ScanDTO | null>(null);
   const [initResult, setInitResult] = useState<InitResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastCheckpoint, setLastCheckpoint] = useState<string | null>(null);
 
+  // Loop Control
   const [isLooping, setIsLooping] = useState(false);
   const [action, setAction] = useState<null | "pause" | "cancel">(null);
 
+  // Refs pour accès synchrone dans les boucles
   const scanRef = useRef<ScanDTO | null>(null);
   useEffect(() => {
     scanRef.current = scan;
@@ -80,6 +88,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
   const loopRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  // 1. Calcul de la progression
   const progress = useMemo(() => {
     const s = scan;
     if (!s) return 0;
@@ -94,13 +103,52 @@ export function useScanTester(opts?: { delayMs?: number }) {
     return Math.min(1, Math.max(0, s.processedCount / s.totalCount));
   }, [scan]);
 
-  const stopLoop = useCallback(() => {
-    loopRef.current = false;
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setIsLooping(false);
+  // 2. Helper pour arrêter la boucle
+  const stopLoop = useCallback((immediate: boolean = false) => {
+    loopRef.current = false; // Le drapeau tombe : la boucle s'arrêtera au prochain tour
+    if (immediate) {
+      // Si immédiat (Cancel/Unmount), on tue la requête en cours
+      abortRef.current?.abort();
+      abortRef.current = null;
+      setIsLooping(false);
+    }
   }, []);
 
+  // 3. Vérifier s'il y a un scan actif au démarrage (Active Check)
+  const refreshScanStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/scan/active");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.scan) {
+          setScan(data.scan);
+          scanRef.current = data.scan;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check active scan", e);
+    }
+  }, []);
+
+  // Charger le statut au montage
+  useEffect(() => {
+    refreshScanStatus();
+  }, [refreshScanStatus]);
+
+  // 4. Charger le Checkpoint (Last Success)
+  const fetchCheckpoint = useCallback(async () => {
+    try {
+      const res = await fetch("/api/scan/checkpoint");
+      if (res.ok) {
+        const data = await res.json();
+        setLastCheckpoint(data.lastSuccessAt);
+      }
+    } catch (e) {
+      console.error("Failed to fetch checkpoint", e);
+    }
+  }, []);
+
+  // 5. Initialiser un nouveau scan (ou récupérer l'existant via API init)
   const init = useCallback(async (input: InitMode): Promise<InitResponse> => {
     setError(null);
     setInitResult(null);
@@ -117,9 +165,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     setInitResult(data);
 
     if (data.mode === "new" || data.mode === "existing") {
-      //  update state
       setScan(data.scan);
-      // update ref immédiatement (évite le bug "il faut cliquer 2 fois")
       scanRef.current = data.scan;
     } else {
       setScan(null);
@@ -129,6 +175,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     return data;
   }, []);
 
+  // 6. Exécuter UN batch
   const runOneBatch = useCallback(
     async (scanId: string, signal?: AbortSignal) => {
       const res = await fetch("/api/scan/batch", {
@@ -147,9 +194,10 @@ export function useScanTester(opts?: { delayMs?: number }) {
     []
   );
 
+  // 7. La Boucle Principale (The Loop)
   const runLoop = useCallback(
     async (scanId: string) => {
-      if (loopRef.current) return; // anti double-run
+      if (loopRef.current) return; // Anti double-clic
       loopRef.current = true;
       setIsLooping(true);
 
@@ -157,6 +205,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
       abortRef.current = controller;
 
       try {
+        // Vérif sécu avant de commencer
         const current = scanRef.current;
         if (current && current.id === scanId && isFinalStatus(current.status))
           return;
@@ -186,6 +235,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     [delayMs, runOneBatch]
   );
 
+  // 8. Action : PAUSE (Graceful)
   const pause = useCallback(async () => {
     const s = scanRef.current;
     if (!s) return;
@@ -194,8 +244,8 @@ export function useScanTester(opts?: { delayMs?: number }) {
     setAction("pause");
 
     try {
-      // stop loop côté front puis pause côté back
-      stopLoop();
+      // FALSE ici : on dit à la boucle de s'arrêter mais on n'abort pas la requête en cours
+      stopLoop(false);
 
       const res = await fetch("/api/scan/pause", {
         method: "POST",
@@ -205,6 +255,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
 
       if (!res.ok) throw new Error(await readErrorMessage(res));
       const data = (await res.json()) as { scan: ScanDTO };
+
       setScan(data.scan);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "UNKNOWN_ERROR");
@@ -213,7 +264,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     }
   }, [stopLoop]);
 
-  // ✅ cancel accepte un scanId optionnel (utile quand init retourne existing)
+  // 9. Action : CANCEL (Hard)
   const cancel = useCallback(
     async (scanId?: string) => {
       const current = scanRef.current;
@@ -224,7 +275,8 @@ export function useScanTester(opts?: { delayMs?: number }) {
       setAction("cancel");
 
       try {
-        stopLoop();
+        // TRUE ici : on coupe tout immédiatement
+        stopLoop(true);
 
         const res = await fetch("/api/scan/cancel", {
           method: "POST",
@@ -245,20 +297,23 @@ export function useScanTester(opts?: { delayMs?: number }) {
   );
 
   return {
-    // state
+    // State
     scan,
     initResult,
     progress,
     error,
     isLooping,
     action,
+    lastCheckpoint,
 
-    // actions
+    // Actions
     init,
     runOneBatch,
     runLoop,
     pause,
     cancel,
     stopLoop,
+    fetchCheckpoint,
+    refreshScanStatus,
   };
 }
