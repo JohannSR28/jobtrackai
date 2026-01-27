@@ -2,6 +2,7 @@
 
 import type { RawMail, MailAnalysisService } from "@/services/ai/mailAnalysis";
 import { JobIngestionService } from "@/services/jobDomain/JobIngestionService";
+import { TransactionRepository } from "@/repositories/TransactionRepository";
 
 export interface MailReaderApi {
   getRawMailById(
@@ -34,6 +35,9 @@ export type Scan = {
 
   processedCount: number;
   totalCount: number;
+
+  // NOUVEAU : Coût accumulé
+  tokensCost: number;
 
   shouldContinue: boolean;
   errorMessage?: string | null;
@@ -70,7 +74,8 @@ export type InitInput =
 export type InitResult =
   | { mode: "existing"; scan: Scan }
   | { mode: "new"; scan: Scan }
-  | { mode: "invalid"; validation: Exclude<ValidateRangeResult, { ok: true }> };
+  | { mode: "invalid"; validation: Exclude<ValidateRangeResult, { ok: true }> }
+  | { mode: "insufficient_funds"; required: number; current: number };
 
 export type BatchResult = { scan: Scan };
 
@@ -90,6 +95,7 @@ export interface ScanRepository {
     processedCount: number;
     totalCount: number;
     shouldContinue: boolean;
+    // tokensCost est optionnel à la création (défaut 0 en DB)
   }): Promise<Scan>;
 
   update(
@@ -106,6 +112,9 @@ export interface ScanRepository {
       totalCount: number;
       shouldContinue: boolean;
       errorMessage: string | null;
+
+      // 🟢 NOUVEAU : Permettre la mise à jour du coût
+      tokensCost: number;
     }>
   ): Promise<Scan>;
 
@@ -134,10 +143,6 @@ export interface MailCheckpointRepository {
   ): Promise<void>;
 }
 
-/**
- * Ce que le service attend du "Provider layer"
- * (tu as déjà validateRange + getAllMessageIdsInRange)
- */
 export interface MailProviderApi {
   validateRange(
     startIso: string,
@@ -152,6 +157,11 @@ export interface MailProviderApi {
   }): Promise<
     { ok: true; ids: string[] } | { ok: false; reason: "TOO_MANY_MESSAGES" }
   >;
+}
+
+interface PostgresError {
+  code?: string;
+  message?: string;
 }
 
 function isFinal(status: ScanStatus): boolean {
@@ -187,20 +197,22 @@ function normalizeIsoRange(startIso: string, endIso: string) {
 export class ScanService {
   private readonly rules: ScanRangeRules;
   private readonly batchHours: number;
+  private readonly sinceLastFallbackDays: number;
+
+  //  CONFIG PRIX
+  private readonly COST_PER_EMAIL = 1;
 
   constructor(
     private scans: ScanRepository,
     private checkpoints: MailCheckpointRepository,
     private providerApi: MailProviderApi,
 
-    // nouveaux ajouts pour Module 5
     private mailReader: MailReaderApi,
     private mailAnalysis: MailAnalysisService,
-
-    // module 6 job ingestion
     private jobIngestion: JobIngestionService,
 
-    // fin nouveaux ajouts
+    //  INJECTION DU REPO TRANSACTION
+    private transactions: TransactionRepository,
 
     opts?: {
       rules?: ScanRangeRules; // default {90,2000}
@@ -213,13 +225,8 @@ export class ScanService {
     this.sinceLastFallbackDays = opts?.sinceLastFallbackDays ?? 7;
   }
 
-  private readonly sinceLastFallbackDays: number;
-
   /**
-   * INIT (v4)
-   * - résout les dates (since_last via checkpoint)
-   * - validate range via provider
-   * - crée scan (sans message_ids)
+   * INIT (v5 - AVEC VERIFICATION DEVIS)
    */
   async init(
     userId: string,
@@ -236,6 +243,20 @@ export class ScanService {
 
     const { startIso, endIso, totalCount } = resolved;
 
+    // 1. LOGIQUE FINANCIÈRE : CHECK DU DEVIS
+    if (totalCount > 0) {
+      const estimatedCost = totalCount * this.COST_PER_EMAIL;
+      const currentBalance = await this.transactions.getBalance(userId);
+
+      if (currentBalance < estimatedCost) {
+        return {
+          mode: "insufficient_funds",
+          required: estimatedCost,
+          current: currentBalance,
+        };
+      }
+    }
+
     const created = await this.scans.create({
       userId,
       provider,
@@ -248,25 +269,40 @@ export class ScanService {
       processedCount: 0,
       totalCount,
       shouldContinue: totalCount > 0,
+      // tokensCost sera à 0 par défaut en DB
     });
 
     return { mode: "new", scan: created };
   }
 
   /**
-   * RUN BATCH (v4)
-   * - fenêtre glissante: [cursorAt, min(cursorAt+24h, rangeEndAt)]
-   * - fetch ids via providerApi
-   * - traitement fictif
-   * - update cursorAt + processedCount
-   * - finalize + update checkpoint si terminé
+   * RUN BATCH (v5 - AVEC DÉBIT RÉEL)
    */
-  // RUN BATCH (v4) — fonctionnel + corrige processedCount + cohérence finalize
+
   async runBatch(userId: string, scanId: string): Promise<BatchResult> {
     const scan = await this.mustGetScan(userId, scanId);
 
-    // Déjà final => no-op
-    if (isFinal(scan.status)) return { scan };
+    if (isFinal(scan.status)) {
+      return { scan };
+    }
+
+    // 1. CHECK SOLDE GLOBAL
+    const initialBalance = await this.transactions.getBalance(userId);
+
+    // Sécurité : on s'assure que c'est bien un nombre
+    if (typeof initialBalance !== "number" || isNaN(initialBalance)) {
+      // En prod, on pourrait logger une erreur critique ici ou throw
+      // Pour l'instant on laisse continuer, le paiement DB bloquera si besoin
+    }
+
+    if (initialBalance <= 0) {
+      const paused = await this.scans.update(userId, scanId, {
+        status: "paused",
+        errorMessage: "INSUFFICIENT_FUNDS",
+        shouldContinue: false,
+      });
+      return { scan: paused };
+    }
 
     // Reprise auto
     if (scan.status === "paused" || scan.status === "created") {
@@ -283,21 +319,18 @@ export class ScanService {
         shouldContinue: false,
         errorMessage: null,
       });
-
       const finalized = await this.scans.finalize(userId, scanId, {
         finalStatus: "completed",
       });
-
       await this.checkpoints.upsertLastSuccessAt(
         userId,
         running.provider,
         running.rangeEndAt
       );
-
       return { scan: finalized };
     }
 
-    // Fenêtre batch (24h glissante)
+    // Fenêtre batch
     const windowStart = running.cursorAt;
     const windowEnd = minIso(
       addHoursIso(windowStart, this.batchHours),
@@ -305,7 +338,6 @@ export class ScanService {
     );
 
     try {
-      // Fetch IDs de la fenêtre
       const idsOut = await this.providerApi.getAllMessageIdsInRange({
         startIso: windowStart,
         endIso: windowEnd,
@@ -322,11 +354,9 @@ export class ScanService {
 
       const ids = idsOut.ids;
 
-      // Rien à traiter: on avance la fenêtre, sinon risque de boucle infinie
       if (ids.length === 0) {
         const shouldContinue =
           new Date(windowEnd) < new Date(running.rangeEndAt);
-
         const updated = await this.scans.update(userId, scanId, {
           cursorAt: windowEnd,
           shouldContinue,
@@ -339,128 +369,161 @@ export class ScanService {
             shouldContinue: false,
             errorMessage: null,
           });
-
           const finalized = await this.scans.finalize(userId, scanId, {
             finalStatus: "completed",
           });
-
           await this.checkpoints.upsertLastSuccessAt(
             userId,
             running.provider,
             running.rangeEndAt
           );
-
           return { scan: finalized };
         }
-
         return { scan: updated };
       }
 
       let succeeded = 0;
       let localFailed = 0;
-
       let hasExternalFailure = false;
       let externalFailureMsg: string | null = null;
+      let isOutOfFunds = false;
 
+      // BOUCLE DE TRAITEMENT
       for (const id of ids) {
+        // Pré-check JS (Limiteur de vitesse)
+        const currentCost = (succeeded + 1) * this.COST_PER_EMAIL;
+
+        if (currentCost > initialBalance) {
+          isOutOfFunds = true;
+          break;
+        }
+
         try {
           const rawMail = await this.mailReader.getRawMailById(
             userId,
             running.provider,
             id
           );
-
           const analysis = await this.mailAnalysis.analyzeMail(rawMail);
-
           await this.jobIngestion.ingestAnalyzedMail({
             userId,
             provider: running.provider,
             rawMail,
             analysis,
           });
-
           succeeded += 1;
-
-          console.log("Processed message:", { id });
         } catch (e: unknown) {
           const msg = this.stringifyError(e);
-
-          //  Si c'est AI/Provider/Supabase => on stoppe le batch et on pause
           if (isRetryableExternalFailure(msg)) {
             hasExternalFailure = true;
             externalFailureMsg = msg;
             break;
           }
-
-          //  Sinon : erreur locale => on skip et on continue
           localFailed += 1;
-          console.log("Local message failure (skipped):", { id, error: msg });
         }
       }
 
-      //  Batch échoue uniquement si external failure
-      // IMPORTANT: on n'avance pas cursorAt, et on ne change pas processedCount
+      // 3. PAIEMENT SÉCURISÉ
+      let batchCost = 0;
+      let paymentFailed = false;
+
+      if (succeeded > 0) {
+        batchCost = succeeded * this.COST_PER_EMAIL;
+
+        try {
+          await this.transactions.createTransaction({
+            userId,
+            amount: -batchCost,
+            type: "SCAN_USAGE",
+            description: `Batch processing: ${succeeded} emails`,
+            referenceId: scanId,
+          });
+        } catch (e: unknown) {
+          // Type Guard pour éviter 'any'
+          const pgError = e as PostgresError;
+
+          // Vérification du code d'erreur Postgres (23514 = Check Constraint Violation)
+          if (
+            pgError?.code === "23514" ||
+            (pgError.message &&
+              pgError.message.includes("user_wallets_balance_check"))
+          ) {
+            paymentFailed = true;
+          } else {
+            throw e; // Autre erreur grave, on laisse remonter
+          }
+        }
+      }
+
+      // CAS A : Arrêt pour fonds (JS ou DB)
+      if (isOutOfFunds || paymentFailed) {
+        const currentCost = running.tokensCost || 0;
+        const finalCostToAdd = paymentFailed ? 0 : batchCost;
+
+        const paused = await this.scans.update(userId, scanId, {
+          status: "paused",
+          errorMessage: "INSUFFICIENT_FUNDS",
+          shouldContinue: false,
+          tokensCost: currentCost + finalCostToAdd,
+        });
+        return { scan: paused };
+      }
+
+      // CAS B : Erreur Externe
       if (hasExternalFailure) {
+        const currentCost = running.tokensCost || 0;
         const paused = await this.scans.update(userId, scanId, {
           status: "paused",
           errorMessage: externalFailureMsg ?? "RETRYABLE_EXTERNAL_FAILURE",
           shouldContinue: true,
+          tokensCost: currentCost + batchCost,
         });
-
         return { scan: paused };
       }
 
-      // BUGFIX: processedCount doit compter les messages "tentés"
-      // car on avance cursorAt => ces messages ne seront pas retentés.
+      // SUITE NORMALE
       const attempted = succeeded + localFailed;
-
       const newProcessed = Math.min(
         running.totalCount,
         Math.max(0, running.processedCount) + attempted
       );
-
       const shouldContinue = new Date(windowEnd) < new Date(running.rangeEndAt);
+      const currentCost = running.tokensCost || 0;
+      const newTotalCost = currentCost + batchCost;
 
       const updated = await this.scans.update(userId, scanId, {
         cursorAt: windowEnd,
         processedCount: newProcessed,
         shouldContinue,
         errorMessage: localFailed > 0 ? `LOCAL_FAILED_${localFailed}` : null,
+        tokensCost: newTotalCost,
       });
 
       if (!shouldContinue) {
-        // Force cohérence: scan completed => processedCount = totalCount
         await this.scans.update(userId, scanId, {
           processedCount: running.totalCount,
           shouldContinue: false,
           errorMessage: null,
         });
-
         const finalized = await this.scans.finalize(userId, scanId, {
           finalStatus: "completed",
         });
-
         await this.checkpoints.upsertLastSuccessAt(
           userId,
           running.provider,
           running.rangeEndAt
         );
-
         return { scan: finalized };
       }
 
       return { scan: updated };
     } catch (e: unknown) {
       const msg = this.stringifyError(e);
-
-      // Ici c'est généralement providerApi/getAllMessageIds qui a foiré => external
       const paused = await this.scans.update(userId, scanId, {
         status: "paused",
         errorMessage: msg,
         shouldContinue: true,
-        // cursor inchangé car on n'a jamais réussi à compléter le batch
       });
-
       return { scan: paused };
     }
   }
@@ -482,11 +545,12 @@ export class ScanService {
       finalStatus: "canceled",
     });
 
-    // pas de checkpoint update si canceled
     return { scan: canceled };
   }
 
   // ----------------- internals -----------------
+  // (Le reste du fichier reste inchangé : resolveRange, mustGetScan, stringifyError, etc.)
+  // Je te remets le reste pour que tu puisses copier-coller tout le fichier sans trou
 
   private async resolveRange(
     userId: string,
@@ -514,7 +578,6 @@ export class ScanService {
       startRaw = norm.start;
       endRaw = norm.end;
     } else {
-      // since_last : checkpoint.last_success_at ou fallback now-7days
       const checkpoint = await this.checkpoints.get(userId, provider);
       const endIso = input.endIso
         ? new Date(input.endIso).toISOString()
@@ -543,8 +606,6 @@ export class ScanService {
       endRaw = norm.end;
     }
 
-    // validation provider (<=90j, <=2000)
-    // (tu peux aussi vérifier days ici côté service pour early fail)
     const days = daysBetweenCeil(startRaw, endRaw);
     if (days > this.rules.maxDays) {
       return {
@@ -593,13 +654,8 @@ export class ScanService {
   }
 }
 
-// Heuristique MVP :
-// si erreur AI / Provider / Supabase => on PAUSE et on n'avance pas le curseur
-
 function isRetryableExternalFailure(msg: string): boolean {
   const m = msg.toLowerCase();
-
-  // AI
   if (
     m.includes("openai") ||
     m.includes("rate limit") ||
@@ -609,8 +665,6 @@ function isRetryableExternalFailure(msg: string): boolean {
     m.includes("econnreset")
   )
     return true;
-
-  // Provider (gmail/outlook)
   if (
     m.includes("gmail") ||
     m.includes("outlook") ||
@@ -620,8 +674,6 @@ function isRetryableExternalFailure(msg: string): boolean {
     m.includes("503")
   )
     return true;
-
-  // Supabase / DB
   if (
     m.includes("supabase") ||
     m.includes("postgrest") ||
@@ -631,6 +683,5 @@ function isRetryableExternalFailure(msg: string): boolean {
     m.includes("sql")
   )
     return true;
-
   return false;
 }

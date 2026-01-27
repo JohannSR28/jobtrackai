@@ -18,6 +18,10 @@ export type ScanDTO = {
 
   processedCount: number;
   totalCount: number;
+
+  // 🟢 AJOUT : Pour afficher le coût dans l'UI si besoin
+  tokensCost?: number;
+
   shouldContinue: boolean;
 
   rangeStartAt?: string;
@@ -27,7 +31,10 @@ export type ScanDTO = {
   errorMessage?: string | null;
 };
 
+// --- TYPES DE RÉPONSE INIT ---
+
 type InitOk = { mode: "existing" | "new"; scan: ScanDTO };
+
 type InitInvalid = {
   mode: "invalid";
   reason: string;
@@ -37,7 +44,16 @@ type InitInvalid = {
   days?: number;
   count?: number;
 };
-export type InitResponse = InitOk | InitInvalid;
+
+// 🟢 NOUVEAU TYPE AJOUTÉ
+type InitInsufficientFunds = {
+  mode: "insufficient_funds";
+  required: number;
+  current: number;
+};
+
+// 🟢 MISE À JOUR DE L'UNION TYPE
+export type InitResponse = InitOk | InitInvalid | InitInsufficientFunds;
 
 type BatchResponse = { scan: ScanDTO };
 
@@ -71,7 +87,10 @@ export function useScanTester(opts?: { delayMs?: number }) {
 
   // States
   const [scan, setScan] = useState<ScanDTO | null>(null);
+
+  // InitResult peut maintenant contenir le cas "insufficient_funds"
   const [initResult, setInitResult] = useState<InitResponse | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [lastCheckpoint, setLastCheckpoint] = useState<string | null>(null);
 
@@ -105,16 +124,15 @@ export function useScanTester(opts?: { delayMs?: number }) {
 
   // 2. Helper pour arrêter la boucle
   const stopLoop = useCallback((immediate: boolean = false) => {
-    loopRef.current = false; // Le drapeau tombe : la boucle s'arrêtera au prochain tour
+    loopRef.current = false;
     if (immediate) {
-      // Si immédiat (Cancel/Unmount), on tue la requête en cours
       abortRef.current?.abort();
       abortRef.current = null;
       setIsLooping(false);
     }
   }, []);
 
-  // 3. Vérifier s'il y a un scan actif au démarrage (Active Check)
+  // 3. Vérifier s'il y a un scan actif au démarrage
   const refreshScanStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/scan/active");
@@ -130,12 +148,11 @@ export function useScanTester(opts?: { delayMs?: number }) {
     }
   }, []);
 
-  // Charger le statut au montage
   useEffect(() => {
     refreshScanStatus();
   }, [refreshScanStatus]);
 
-  // 4. Charger le Checkpoint (Last Success)
+  // 4. Charger le Checkpoint
   const fetchCheckpoint = useCallback(async () => {
     try {
       const res = await fetch("/api/scan/checkpoint");
@@ -148,7 +165,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     }
   }, []);
 
-  // 5. Initialiser un nouveau scan (ou récupérer l'existant via API init)
+  // 5. Initialiser un nouveau scan
   const init = useCallback(async (input: InitMode): Promise<InitResponse> => {
     setError(null);
     setInitResult(null);
@@ -164,10 +181,12 @@ export function useScanTester(opts?: { delayMs?: number }) {
     const data = (await res.json()) as InitResponse;
     setInitResult(data);
 
+    // TypeScript comprendra maintenant que data.mode peut être "insufficient_funds"
     if (data.mode === "new" || data.mode === "existing") {
       setScan(data.scan);
       scanRef.current = data.scan;
     } else {
+      // Cas invalid ou insufficient_funds : on ne set pas le scan actif
       setScan(null);
       scanRef.current = null;
     }
@@ -194,10 +213,10 @@ export function useScanTester(opts?: { delayMs?: number }) {
     []
   );
 
-  // 7. La Boucle Principale (The Loop)
+  // 7. La Boucle Principale
   const runLoop = useCallback(
     async (scanId: string) => {
-      if (loopRef.current) return; // Anti double-clic
+      if (loopRef.current) return;
       loopRef.current = true;
       setIsLooping(true);
 
@@ -205,7 +224,6 @@ export function useScanTester(opts?: { delayMs?: number }) {
       abortRef.current = controller;
 
       try {
-        // Vérif sécu avant de commencer
         const current = scanRef.current;
         if (current && current.id === scanId && isFinalStatus(current.status))
           return;
@@ -235,7 +253,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     [delayMs, runOneBatch]
   );
 
-  // 8. Action : PAUSE (Graceful)
+  // 8. Action : PAUSE
   const pause = useCallback(async () => {
     const s = scanRef.current;
     if (!s) return;
@@ -244,7 +262,6 @@ export function useScanTester(opts?: { delayMs?: number }) {
     setAction("pause");
 
     try {
-      // FALSE ici : on dit à la boucle de s'arrêter mais on n'abort pas la requête en cours
       stopLoop(false);
 
       const res = await fetch("/api/scan/pause", {
@@ -264,7 +281,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     }
   }, [stopLoop]);
 
-  // 9. Action : CANCEL (Hard)
+  // 9. Action : CANCEL
   const cancel = useCallback(
     async (scanId?: string) => {
       const current = scanRef.current;
@@ -275,7 +292,6 @@ export function useScanTester(opts?: { delayMs?: number }) {
       setAction("cancel");
 
       try {
-        // TRUE ici : on coupe tout immédiatement
         stopLoop(true);
 
         const res = await fetch("/api/scan/cancel", {
@@ -297,7 +313,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
   );
 
   return {
-    // State
+    // States
     scan,
     initResult,
     progress,
@@ -306,7 +322,7 @@ export function useScanTester(opts?: { delayMs?: number }) {
     action,
     lastCheckpoint,
 
-    // Actions
+    // Méthodes
     init,
     runOneBatch,
     runLoop,

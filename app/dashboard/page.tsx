@@ -459,9 +459,22 @@ export default function JobDomainPage() {
         result = await init({ mode: "custom", startIso, endIso });
       }
 
+      // CAS 1 : Dates invalides
       if (result.mode === "invalid") {
         setAlertMessage(
           `Plage de date invalide: ${result.reason || "Vérifiez vos dates"}`
+        );
+        setAlertModalOpen(true);
+        return;
+      }
+
+      //  CAS 2 : FONDS INSUFFISANTS (Nouveau)
+      if (result.mode === "insufficient_funds") {
+        setAlertMessage(
+          `Crédits insuffisants pour ce scan.\n\n` +
+            `Coût estimé : ${result.required} crédits\n` +
+            `Votre solde : ${result.current} crédits\n\n` +
+            `Il vous manque ${result.required - result.current} crédits.`
         );
         setAlertModalOpen(true);
         return;

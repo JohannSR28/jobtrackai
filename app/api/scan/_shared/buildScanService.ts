@@ -33,6 +33,8 @@ import { JobIngestionService } from "@/services/jobDomain/JobIngestionService";
 import { JobEmailRepository } from "@/repositories/jobEmailRepository";
 import { JobApplicationRepository } from "@/repositories/jobApplicationRepository";
 
+import { TransactionRepository } from "@/repositories/TransactionRepository";
+
 type MailConnectionRow = { provider: MailProvider };
 
 async function getConnectedProvider(
@@ -145,7 +147,13 @@ export async function buildScanService(
   const jobIngestion = new JobIngestionService(jobEmailRepo, jobAppRepo);
 
   // =========================
-  // 8) ScanService (FINAL)
+  // 8) Repo Transaction
+  // =========================
+
+  const transactionRepo = new TransactionRepository(db);
+
+  // =========================
+  // 9) ScanService (FINAL)
   // =========================
   const scanService = new ScanService(
     scanRepo,
@@ -154,6 +162,8 @@ export async function buildScanService(
     mailReaderService,
     mailAnalysisService,
     jobIngestion,
+    transactionRepo,
+
     {
       rules,
       batchHours: 24,

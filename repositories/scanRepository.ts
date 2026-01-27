@@ -18,14 +18,17 @@ type ScanRow = {
 
   processed_count: number;
   total_count: number;
-  should_continue: boolean;
+  //  AJOUT
+  tokens_cost: number;
 
+  should_continue: boolean;
   error_message: string | null;
 
   created_at: string;
   updated_at: string;
 };
 
+// 2. AJOUT mapping vers l'objet Scan
 function mapRow(r: ScanRow): Scan {
   return {
     id: r.id,
@@ -39,8 +42,11 @@ function mapRow(r: ScanRow): Scan {
 
     processedCount: r.processed_count,
     totalCount: r.total_count,
-    shouldContinue: r.should_continue,
 
+    // AJOUT (fallback à 0 si null)
+    tokensCost: r.tokens_cost ?? 0,
+
+    shouldContinue: r.should_continue,
     errorMessage: r.error_message,
 
     createdAt: r.created_at,
@@ -60,6 +66,7 @@ type ScanUpdatePatchDb = Partial<{
   should_continue: boolean;
 
   error_message: string | null;
+  tokens_cost: number;
 }>;
 
 export class ScanRepository implements IScanRepository {
@@ -122,6 +129,7 @@ export class ScanRepository implements IScanRepository {
         processed_count: input.processedCount,
         total_count: input.totalCount,
         should_continue: input.shouldContinue,
+        tokens_cost: 0,
       })
       .select("*")
       .single();
@@ -145,6 +153,7 @@ export class ScanRepository implements IScanRepository {
       shouldContinue: boolean;
 
       errorMessage: string | null;
+      tokensCost: number;
     }>
   ): Promise<Scan> {
     const dbPatch: ScanUpdatePatchDb = {};
@@ -164,6 +173,8 @@ export class ScanRepository implements IScanRepository {
 
     if (patch.errorMessage !== undefined)
       dbPatch.error_message = patch.errorMessage;
+
+    if (patch.tokensCost !== undefined) dbPatch.tokens_cost = patch.tokensCost;
 
     const { data, error } = await this.db
       .from("scans")
