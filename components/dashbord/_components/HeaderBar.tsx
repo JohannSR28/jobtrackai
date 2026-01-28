@@ -1,5 +1,8 @@
 "use client";
 
+// 1. Import du router Next.js
+import { useRouter } from "next/navigation";
+
 import { Dropdown, MenuItem } from "./ui";
 import {
   IconChevronDown,
@@ -11,7 +14,7 @@ import {
 
 export function HeaderBar(props: {
   points: number;
-  walletLoading?: boolean; // 👈 AJOUT : Prop pour l'état de chargement du solde
+  walletLoading?: boolean;
 
   email: string;
   busy: boolean;
@@ -29,8 +32,15 @@ export function HeaderBar(props: {
 
   onLogout: () => void;
   onDeleteAccount: () => void;
+
+  // GESTION CONNEXION MAIL
+  isMailConnected: boolean | undefined;
+  onConnectMail: () => void;
+  onRemoveMailConnection: () => void;
 }) {
   const scanActionVisible = props.scanRunning;
+
+  const router = useRouter();
 
   return (
     <div className="mb-3 flex items-start justify-between gap-3">
@@ -38,7 +48,6 @@ export function HeaderBar(props: {
         <div className="text-2xl font-black">Bienvenue sur JobTrackAI</div>
 
         <div className="mt-2 flex items-center gap-4 text-sm text-slate-300">
-          {/* 👇 MODIFICATION : Effet de chargement Skeleton */}
           {props.walletLoading ? (
             <div className="h-5 w-24 animate-pulse rounded bg-white/10" />
           ) : (
@@ -52,6 +61,7 @@ export function HeaderBar(props: {
         </div>
 
         <div className="mt-2 flex items-center gap-2">
+          {/* BOUTON SCAN PRINCIPAL */}
           <button
             type="button"
             className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
@@ -129,22 +139,35 @@ export function HeaderBar(props: {
             }}
           />
           <div className="my-1 h-px bg-white/10" />
+
           <MenuItem
             label="Acheter des points"
             onClick={() => {
               props.setProfileMenuOpen(false);
-              alert("Fake: buy points");
+              // 3. Redirection automatique relative au domaine actuel
+              router.push("/pricing-page");
             }}
           />
-          <MenuItem
-            label="Enlever l'accès à la boîte mail"
-            onClick={() => {
-              props.setProfileMenuOpen(false);
-              const ok = confirm("Retirer l'accès à la boîte mail ? (fake)");
-              if (!ok) return;
-              alert("Fake: mailbox access removed");
-            }}
-          />
+
+          {/* LOGIQUE INTELLIGENTE DU MENU MAIL */}
+          {props.isMailConnected ? (
+            <MenuItem
+              label="Retirer l'accès aux mails"
+              onClick={() => {
+                props.setProfileMenuOpen(false);
+                props.onRemoveMailConnection();
+              }}
+            />
+          ) : (
+            <MenuItem
+              label="Autoriser l'accès aux mails"
+              onClick={() => {
+                props.setProfileMenuOpen(false);
+                props.onConnectMail();
+              }}
+            />
+          )}
+
           <div className="my-1 h-px bg-white/10" />
           <MenuItem
             danger

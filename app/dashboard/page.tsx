@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+
 import {
   AlertModal,
   ResumeScanModal,
@@ -18,6 +19,8 @@ import {
 import { useScanTester, type ScanDTO } from "@/hooks/useScanTester";
 import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
+import { useMailConnection } from "@/hooks/useMailConnection";
+import { useMailActions } from "@/hooks/useMailActions";
 
 import {
   JOB_STATUS,
@@ -32,7 +35,7 @@ import { Drawer } from "@/components/dashbord/_components/Drawer";
 import { EmailEditModal } from "@/components/dashbord/_components/EmailEditModal";
 import { StatusChangeModal } from "@/components/dashbord/_components/StatusChangeModal";
 
-// --- TYPES LOCAUX (Pour éviter les 'any') ---
+// --- TYPES LOCAUX ---
 
 type ApplicationsData = {
   applications: Bucket[];
@@ -76,19 +79,18 @@ function CompactProgressBar({ scan }: { scan: ScanDTO }) {
     totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
 
   const isActive = status === "running" || status === "created";
-  // Fake 5% pour feedback visuel immédiat si démarrage
   const visualPercent = isActive && rawPercent < 5 ? 5 : rawPercent;
 
   const isError = status === "failed" || !!errorMessage;
   const isPaused = status === "paused";
 
   return (
-    <div className="mx-auto max-w-7xl mb-6 flex items-center gap-4 px-1 animate-in fade-in slide-in-from-top-2 duration-500">
+    <div className="mx-auto mb-6 flex max-w-7xl animate-in slide-in-from-top-2 items-center gap-4 px-1 duration-500">
       <div
-        className={`flex-1 flex items-center h-10 rounded-lg border overflow-hidden shadow-sm backdrop-blur-sm relative transition-colors duration-500 ${
+        className={`relative flex h-10 flex-1 items-center overflow-hidden rounded-lg border shadow-sm backdrop-blur-sm transition-colors duration-500 ${
           isPaused
-            ? "bg-amber-900/20 border-amber-500/30"
-            : "bg-slate-900/80 border-slate-800"
+            ? "border-amber-500/30 bg-amber-900/20"
+            : "border-slate-800 bg-slate-900/80"
         }`}
       >
         <div
@@ -97,7 +99,7 @@ function CompactProgressBar({ scan }: { scan: ScanDTO }) {
               ? "bg-red-500/20"
               : isPaused
                 ? "bg-amber-500/20"
-                : "bg-indigo-500/20 animate-pulse"
+                : "animate-pulse bg-indigo-500/20"
           }`}
           style={{ width: `${visualPercent}%` }}
         />
@@ -111,10 +113,10 @@ function CompactProgressBar({ scan }: { scan: ScanDTO }) {
           }`}
           style={{ width: `${visualPercent}%` }}
         />
-        <div className="relative z-10 flex w-full justify-between items-center px-4 text-xs font-medium">
+        <div className="relative z-10 flex w-full items-center justify-between px-4 text-xs font-medium">
           <div className="flex items-center gap-3">
             <span
-              className={`uppercase tracking-wider font-bold ${
+              className={`font-bold uppercase tracking-wider ${
                 isError
                   ? "text-red-400"
                   : isPaused
@@ -128,21 +130,64 @@ function CompactProgressBar({ scan }: { scan: ScanDTO }) {
                   ? "Scanning..."
                   : status}
             </span>
-            <span className="text-slate-400 border-l border-white/10 pl-3 hidden sm:inline-block">
+            <span className="hidden border-l border-white/10 pl-3 text-slate-400 sm:inline-block">
               {processedCount} / {totalCount} emails
             </span>
           </div>
           <div className="flex items-center gap-3">
             {errorMessage && (
-              <span className="text-red-400 truncate max-w-[200px]">
+              <span className="max-w-[200px] truncate text-red-400">
                 {errorMessage}
               </span>
             )}
-            <span className="text-slate-200 font-mono">{rawPercent}%</span>
+            <span className="font-mono text-slate-200">{rawPercent}%</span>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+// --- CONNEXION MAIL REQUISE (MODALE) ---
+function MailConnectModal(props: {
+  open: boolean;
+  onClose: () => void;
+  onConnect: () => void;
+  providerName: string;
+}) {
+  return (
+    <ModalShell
+      open={props.open}
+      onClose={props.onClose}
+      title="Autorisation Requise"
+      subtitle="Accès à la boîte mail nécessaire"
+    >
+      <div className="space-y-4 text-sm text-slate-300">
+        <p>
+          Pour analyser vos candidatures, JobTrack a besoin de
+          l&apos;autorisation de lire vos emails via{" "}
+          <strong>{props.providerName}</strong>.
+        </p>
+        <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-amber-200">
+          🔒 Nous ne stockons jamais vos emails complets. Seules les
+          candidatures détectées sont analysées.
+        </div>
+        <div className="flex justify-end gap-3 border-t border-white/10 pt-4">
+          <button
+            onClick={props.onClose}
+            className="rounded-lg px-4 py-2 hover:bg-white/10"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={props.onConnect}
+            className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500"
+          >
+            Autoriser l&apos;accès
+          </button>
+        </div>
+      </div>
+    </ModalShell>
   );
 }
 
@@ -172,10 +217,10 @@ function ScanStartModal(props: {
       <div className="space-y-4 text-sm text-slate-200">
         <div className="space-y-3">
           <label
-            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+            className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
               props.mode === "since_last"
-                ? "bg-indigo-500/10 border-indigo-500/50"
-                : "bg-slate-900 border-slate-800 hover:border-slate-700"
+                ? "border-indigo-500/50 bg-indigo-500/10"
+                : "border-slate-800 bg-slate-900 hover:border-slate-700"
             }`}
           >
             <input
@@ -203,10 +248,10 @@ function ScanStartModal(props: {
           </label>
 
           <label
-            className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
               props.mode === "custom"
-                ? "bg-indigo-500/10 border-indigo-500/50"
-                : "bg-slate-900 border-slate-800 hover:border-slate-700"
+                ? "border-indigo-500/50 bg-indigo-500/10"
+                : "border-slate-800 bg-slate-900 hover:border-slate-700"
             }`}
           >
             <input
@@ -217,29 +262,29 @@ function ScanStartModal(props: {
               onChange={() => props.setMode("custom")}
             />
             <div className="flex-1">
-              <div className="font-medium mb-2">Custom Range</div>
+              <div className="mb-2 font-medium">Custom Range</div>
               {props.mode === "custom" && (
-                <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="grid animate-in slide-in-from-top-1 grid-cols-2 gap-3 duration-200">
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wide">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
                       From
                     </span>
                     <input
                       type="date"
                       value={props.startDate}
                       onChange={(e) => props.setStartDate(e.target.value)}
-                      className="w-full rounded-lg bg-slate-950 px-3 py-2 text-sm ring-1 ring-white/10 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-900 transition-colors"
+                      className="w-full cursor-pointer rounded-lg bg-slate-950 px-3 py-2 text-sm outline-none ring-1 ring-white/10 transition-colors hover:bg-slate-900 focus:ring-indigo-500"
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase text-slate-500 font-bold tracking-wide">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
                       To
                     </span>
                     <input
                       type="date"
                       value={props.endDate}
                       onChange={(e) => props.setEndDate(e.target.value)}
-                      className="w-full rounded-lg bg-slate-950 px-3 py-2 text-sm ring-1 ring-white/10 focus:ring-indigo-500 outline-none cursor-pointer hover:bg-slate-900 transition-colors"
+                      className="w-full cursor-pointer rounded-lg bg-slate-950 px-3 py-2 text-sm outline-none ring-1 ring-white/10 transition-colors hover:bg-slate-900 focus:ring-indigo-500"
                     />
                   </div>
                 </div>
@@ -248,17 +293,17 @@ function ScanStartModal(props: {
           </label>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+        <div className="flex justify-end gap-2 border-t border-white/5 pt-2">
           <button
             type="button"
-            className="rounded-lg bg-white/5 px-4 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10 transition-colors"
+            className="rounded-lg bg-white/5 px-4 py-2 text-xs font-semibold ring-1 ring-white/10 transition-colors hover:bg-white/10"
             onClick={props.onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 disabled:opacity-50 transition-all"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500 disabled:opacity-50"
             disabled={
               props.busy ||
               (props.mode === "custom" && (!props.startDate || !props.endDate))
@@ -293,7 +338,6 @@ export default function JobDomainPage() {
   const { signOut, deleteAccount, user } = useAuth();
 
   // 3. SCAN HOOK
-  // Le hook charge l'état initial via useEffect interne (grâce à ta modif)
   const {
     scan,
     init,
@@ -305,10 +349,20 @@ export default function JobDomainPage() {
     fetchCheckpoint,
   } = useScanTester({ delayMs: 500 });
 
+  // 4. MAIL CONNECTION HOOK (ETAT)
+  const {
+    status: mailStatus,
+    pollStatus: pollMailStatus,
+    connect: connectMail,
+  } = useMailConnection();
+
+  // 5. MAIL ACTIONS HOOK (SUPPRESSION)
+  const { removeConnection } = useMailActions();
+
   // --- ETATS LOCAUX UI ---
   const [data, setData] = useState<ApplicationsData | null>(null);
 
-  type ArchiveMode = "active" | "archived"; // Define the ArchiveMode type
+  type ArchiveMode = "active" | "archived";
 
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("active");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -318,9 +372,10 @@ export default function JobDomainPage() {
   // States pour les Modales
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [resumeModalOpen, setResumeModalOpen] = useState(false);
+  const [mailConnectModalOpen, setMailConnectModalOpen] = useState(false); // <--- La modale de connexion
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false); // <--- Pour le compte
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   // Config Scan
   const [scanMode, setScanMode] = useState<ScanMode>("since_last");
@@ -332,20 +387,32 @@ export default function JobDomainPage() {
   // --- LOGIQUE D'AFFICHAGE INTELLIGENT ---
   const [isScanUiVisible, setIsScanUiVisible] = useState(false);
 
+  // Vérifier le statut de connexion mail au montage
   useEffect(() => {
-    // 1. PRIORITÉ : Si la boucle tourne (isLooping), on force l'affichage immédiat
-    // Cela règle le problème du "Reprendre" où le statut est encore "paused"
+    pollMailStatus();
+  }, [pollMailStatus]);
+
+  // Calcul du provider attendu (Gmail vs Outlook)
+  const expectedMailProvider = useMemo(() => {
+    const p = user?.app_metadata?.provider;
+    if (p === "google") return "gmail";
+    if (p === "azure") return "outlook";
+    return null;
+  }, [user]);
+
+  // Calcul état connecté (booléen simple)
+  const isMailConnected = !!(
+    mailStatus?.authenticated && mailStatus?.connected
+  );
+
+  useEffect(() => {
     if (isLooping) {
       setIsScanUiVisible(true);
       return;
     }
-
-    // 2. Sinon, on regarde le statut du scan
     if (scan && (scan.status === "running" || scan.status === "created")) {
       setIsScanUiVisible(true);
-    }
-    // 3. Si on vient de finir ou pauser, on laisse un délai de 3s
-    else if (
+    } else if (
       scan &&
       (scan.status === "paused" ||
         scan.status === "completed" ||
@@ -355,21 +422,17 @@ export default function JobDomainPage() {
         setIsScanUiVisible(false);
       }, 3000);
       return () => clearTimeout(timer);
-    }
-    // 4. Cas initial ou inactif
-    else {
+    } else {
       setIsScanUiVisible(false);
     }
   }, [scan, scan?.status, isLooping]);
 
-  // Autres états UI
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [emailEditOpen, setEmailEditOpen] = useState(false);
   const [emailEditId, setEmailEditId] = useState<string | null>(null);
 
-  // Responsive & Fetch
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 640px)");
     const onChange = () => setIsMobile(mq.matches);
@@ -427,10 +490,17 @@ export default function JobDomainPage() {
     });
   }, [selectedEmailForModal]);
 
-  // --- ACTIONS DU SCAN ---
+  // --- ACTIONS DU SCAN (LOGIQUE DE VERIFICATION) ---
 
   const handleScanButtonClick = () => {
-    // 1. Grâce au hook qui a chargé l'état au montage, `scan` contient la vérité
+    // 🛑 1. Vérification : A-t-on l'accès mail ?
+    if (!isMailConnected) {
+      // NON -> Ouvre la modale d'autorisation
+      setMailConnectModalOpen(true);
+      return;
+    }
+
+    // OUI -> On continue vers la logique de scan habituelle
     const isActive =
       scan &&
       (scan.status === "created" ||
@@ -438,11 +508,47 @@ export default function JobDomainPage() {
         scan.status === "paused");
 
     if (isActive) {
-      // Cas A : Scan en cours/pause -> Modale Reprise
       setResumeModalOpen(true);
     } else {
-      // Cas B : Rien -> Modale Init (Dates)
       setScanModalOpen(true);
+    }
+  };
+
+  // --- ACTIONS DE GESTION MAIL ---
+
+  // 1. Connexion (Redirection OAuth)
+  const handleConnectMail = () => {
+    if (expectedMailProvider) {
+      connectMail(expectedMailProvider);
+    } else {
+      setAlertMessage(
+        "Impossible de déterminer le fournisseur (Gmail/Outlook)."
+      );
+      setAlertModalOpen(true);
+      setMailConnectModalOpen(false);
+    }
+  };
+
+  // 2. Déconnexion (Suppression en base)
+  const handleRemoveMailConnection = async () => {
+    const ok = window.confirm(
+      "Voulez-vous vraiment retirer l'accès à votre boîte mail ? Les scans ne seront plus possibles."
+    );
+    if (!ok) return;
+
+    try {
+      const res = await removeConnection();
+      if (res.ok) {
+        await pollMailStatus(); // Rafraîchir l'état
+        alert("Accès retiré avec succès.");
+      } else {
+        setAlertMessage(`Erreur: ${res.message}`);
+        setAlertModalOpen(true);
+      }
+    } catch (e) {
+      console.error(e);
+      setAlertMessage("Erreur inattendue.");
+      setAlertModalOpen(true);
     }
   };
 
@@ -459,7 +565,6 @@ export default function JobDomainPage() {
         result = await init({ mode: "custom", startIso, endIso });
       }
 
-      // CAS 1 : Dates invalides
       if (result.mode === "invalid") {
         setAlertMessage(
           `Plage de date invalide: ${result.reason || "Vérifiez vos dates"}`
@@ -468,7 +573,6 @@ export default function JobDomainPage() {
         return;
       }
 
-      //  CAS 2 : FONDS INSUFFISANTS (Nouveau)
       if (result.mode === "insufficient_funds") {
         setAlertMessage(
           `Crédits insuffisants pour ce scan.\n\n` +
@@ -497,8 +601,6 @@ export default function JobDomainPage() {
   // --- SYNC DU SOLDE & DES DONNÉES ---
   useEffect(() => {
     if (!scan) return;
-
-    // Détection des changements importants
     const isBatchFinished = scan.processedCount > 0;
     const isScanStopped = [
       "paused",
@@ -507,28 +609,14 @@ export default function JobDomainPage() {
       "failed",
     ].includes(scan.status);
 
-    // CAS 1 : Un batch vient de finir (le compteur a bougé)
-    // On rafraîchit le solde pour montrer le débit progressif
     if (scan.status === "running" && isBatchFinished) {
       refreshBalance();
-      // Optionnel : fetchData() ici peut être lourd si beaucoup de données.
-      // À décommenter si tu veux voir les jobs apparaître en temps réel.
-      // fetchData();
     }
-
-    // CAS 2 : Le scan s'arrête (Pause, Stop, Fini, Erreur)
-    // On fait une mise à jour finale pour être sûr d'avoir le compte exact
     if (isScanStopped) {
       refreshBalance();
-      fetchData(); // Là on recharge la liste des jobs pour être sûr d'avoir tout
+      fetchData();
     }
-  }, [
-    scan, // Include the entire scan object as a dependency
-    scan?.status, // Réagit aux changements d'état (Running -> Paused)
-    scan?.processedCount, // Réagit à l'avancement (10 -> 20 -> 30 emails...)
-    refreshBalance,
-    fetchData,
-  ]);
+  }, [scan, scan?.status, scan?.processedCount, refreshBalance, fetchData]);
 
   // --- AUTH ACTIONS ---
   const LANDING_PAGE_URL = "https://jobtrackai-landing-page.vercel.app/";
@@ -543,12 +631,10 @@ export default function JobDomainPage() {
     }
   };
 
-  // Ouverture de la modale de suppression
   const handleOpenDeleteModal = () => {
     setDeleteModalOpen(true);
   };
 
-  // Confirmation réelle
   const confirmDeleteAccount = async () => {
     setIsDeletingAccount(true);
     try {
@@ -656,12 +742,16 @@ export default function JobDomainPage() {
           // Auth controls
           onLogout={handleLogout}
           onDeleteAccount={handleOpenDeleteModal}
+          // Mail controls
+          isMailConnected={isMailConnected}
+          onConnectMail={() => setMailConnectModalOpen(true)}
+          onRemoveMailConnection={handleRemoveMailConnection}
         />
 
         {isScanUiVisible && scan && <CompactProgressBar scan={scan} />}
 
         {hookError && (
-          <div className="mb-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-100 text-xs">
+          <div className="mb-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
             {hookError}
           </div>
         )}
@@ -693,8 +783,15 @@ export default function JobDomainPage() {
         />
       </div>
 
-      {/* --- LES MODALES --- */}
+      {/* --- MODALE D'AUTORISATION MAIL --- */}
+      <MailConnectModal
+        open={mailConnectModalOpen}
+        onClose={() => setMailConnectModalOpen(false)}
+        onConnect={handleConnectMail}
+        providerName={expectedMailProvider === "gmail" ? "Gmail" : "Outlook"}
+      />
 
+      {/* --- AUTRES MODALES --- */}
       <ScanStartModal
         open={scanModalOpen}
         mode={scanMode}
@@ -725,7 +822,7 @@ export default function JobDomainPage() {
 
       <AlertModal
         open={alertModalOpen}
-        title="Problème de configuration"
+        title="Information"
         message={alertMessage}
         onClose={() => setAlertModalOpen(false)}
       />

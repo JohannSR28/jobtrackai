@@ -83,9 +83,7 @@ export async function GET(
   });
 
   // 6) Redirect UI
-  return NextResponse.redirect(
-    new URL("/mail-connection-test-page", url.origin)
-  );
+  return NextResponse.redirect(new URL("/dashboard", url.origin));
 }
 
 /** ----------------- helpers ----------------- */

@@ -3,22 +3,29 @@
 import { useLanguage } from "@/hooks/useLanguage";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
-// Dictionnaire modifiable pour les tarifs
 const PRICING_PLANS = [
   {
     credits: 500,
     price: 5,
+    // ID du tarif à 5$
+    stripePriceId: "price_1SuOfpHfMNgr7gopmTHUrn1v",
     popular: false,
   },
   {
     credits: 1000,
     price: 8,
+    // ID du tarif à 8$
+    stripePriceId: "price_1SuOfpHfMNgr7gopyiC8kpEK",
     popular: true,
   },
   {
     credits: 2000,
     price: 15,
+    // ID du tarif à 15$
+    stripePriceId: "price_1SuOfpHfMNgr7gopw9aEQwjK",
     popular: false,
   },
 ];
@@ -32,6 +39,8 @@ const translations = {
     credits: "crédits",
     popular: "Populaire",
     buyNow: "Acheter",
+    loginToBuy: "Se connecter pour acheter", // Nouveau texte
+    processing: "Redirection...", // Nouveau texte
     features: [
       "Suivi illimité des candidatures",
       "Analyse IA des réponses",
@@ -62,6 +71,8 @@ const translations = {
     credits: "credits",
     popular: "Popular",
     buyNow: "Buy now",
+    loginToBuy: "Log in to buy",
+    processing: "Redirecting...",
     features: [
       "Unlimited application tracking",
       "AI response analysis",
@@ -90,8 +101,59 @@ const translations = {
 export default function Pricing() {
   const { language } = useLanguage();
   const t = translations[language];
+
+  // Hook d'auth pour vérifier la connexion
+  const { user } = useAuth();
+
   const [selectedPlan, setSelectedPlan] = useState<number>(1);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+
+  // État pour savoir quelle carte est en train de charger
+  const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
+
+  const router = useRouter();
+
+  //  LA FONCTION D'ACHAT
+  const handleBuy = async (planIndex: number) => {
+    const plan = PRICING_PLANS[planIndex];
+
+    // 1. Si pas connecté -> Redirection vers login
+    if (!user) {
+      router.push(`/login?next=/pricing-page`);
+      return;
+    }
+
+    // 2. Si connecté -> On lance le paiement
+    setLoadingIndex(planIndex);
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priceId: plan.stripePriceId,
+          credits: plan.credits,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        // 3. Redirection vers Stripe
+        window.location.href = data.url;
+      } else {
+        console.error("Erreur Stripe:", data.error);
+        alert("Une erreur est survenue lors de l'initialisation du paiement.");
+        setLoadingIndex(null);
+      }
+    } catch (error) {
+      console.error("Erreur fetch:", error);
+      alert("Erreur de connexion au serveur.");
+      setLoadingIndex(null);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col relative overflow-hidden">
@@ -105,7 +167,7 @@ export default function Pricing() {
       {/* Header */}
       <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
         <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/dashboard" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white font-bold text-lg group-hover:bg-brand-orange transition-colors duration-300">
               J
             </div>
@@ -113,18 +175,17 @@ export default function Pricing() {
               JobTrackAI
             </span>
           </Link>
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="text-sm font-semibold text-gray-600 hover:text-brand-orange transition-colors"
           >
             {t.goBack}
-          </Link>
+          </button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 pt-24 pb-16 relative z-10">
-        {/* Hero Section - Plus compact */}
         <section className="max-w-[1000px] mx-auto px-6 py-12 text-center">
           <div className="inline-flex items-center gap-2 mb-6 px-4 py-1.5 bg-brand-orange/10 border border-brand-orange/30 rounded-full">
             <span className="text-brand-orange font-bold text-[10px] uppercase tracking-widest">
@@ -141,12 +202,13 @@ export default function Pricing() {
           </p>
         </section>
 
-        {/* Pricing Cards - Layout plus original avec décalage */}
+        {/* Pricing Cards */}
         <section className="max-w-[1100px] mx-auto px-6 mb-16 mt-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {PRICING_PLANS.map((plan, index) => (
               <div
                 key={index}
+                // On garde la sélection visuelle
                 onClick={() => setSelectedPlan(index)}
                 onMouseEnter={() => setHoveredCard(index)}
                 onMouseLeave={() => setHoveredCard(null)}
@@ -154,28 +216,26 @@ export default function Pricing() {
                   plan.popular
                     ? "border-brand-orange shadow-[0_20px_50px_rgba(255,159,67,0.2)]"
                     : selectedPlan === index
-                    ? "border-brand-orange shadow-lg"
-                    : "border-gray-200 hover:border-brand-orange/50 hover:shadow-md"
+                      ? "border-brand-orange shadow-lg"
+                      : "border-gray-200 hover:border-brand-orange/50 hover:shadow-md"
                 }`}
                 style={{
                   transform:
                     hoveredCard === index
                       ? "scale(1.08) rotate(0deg)"
                       : index === 0
-                      ? "rotate(2deg)"
-                      : index === 2
-                      ? "rotate(-2deg)"
-                      : "none",
+                        ? "rotate(2deg)"
+                        : index === 2
+                          ? "rotate(-2deg)"
+                          : "none",
                 }}
               >
-                {/* Badge populaire */}
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-brand-orange text-black text-[10px] font-bold uppercase tracking-widest rounded-full shadow-lg animate-bounce">
                     {t.popular}
                   </div>
                 )}
 
-                {/* Nombre de crédits */}
                 <div className="text-center mb-6 relative">
                   <div className="absolute inset-0 flex items-center justify-center opacity-5">
                     <span className="text-8xl font-black text-brand-orange">
@@ -192,7 +252,6 @@ export default function Pricing() {
                   </div>
                 </div>
 
-                {/* Prix */}
                 <div className="text-center mb-6 pb-6 border-b border-gray-200">
                   <div className="flex items-baseline justify-center gap-1">
                     <span className="text-4xl font-bold text-black">
@@ -204,24 +263,34 @@ export default function Pricing() {
                   </div>
                 </div>
 
-                {/* Bouton */}
+                {/* BOUTON D'ACTION */}
                 <button
-                  className={`w-full py-3 rounded-xl font-bold text-sm uppercase tracking-tight transition-all duration-300 ${
+                  onClick={(e) => {
+                    e.stopPropagation(); // Évite de déclencher le onClick de la div parente
+                    handleBuy(index);
+                  }}
+                  disabled={loadingIndex !== null} // Désactive si un chargement est en cours
+                  className={`w-full py-3 rounded-xl font-bold text-sm uppercase tracking-tight transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                     plan.popular
                       ? "bg-brand-orange text-black hover:bg-brand-orange-hover hover:shadow-[0_0_20px_rgba(255,159,67,0.4)] hover:scale-105"
                       : selectedPlan === index
-                      ? "bg-black text-white hover:bg-gray-800"
-                      : "bg-gray-100 text-gray-700 hover:bg-black hover:text-white"
+                        ? "bg-black text-white hover:bg-gray-800"
+                        : "bg-gray-100 text-gray-700 hover:bg-black hover:text-white"
                   }`}
                 >
-                  {t.buyNow}
+                  {/* Texte dynamique selon l'état */}
+                  {loadingIndex === index
+                    ? t.processing
+                    : !user
+                      ? t.loginToBuy
+                      : t.buyNow}
                 </button>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Features - Design en grille asymétrique */}
+        {/* Features */}
         <section className="max-w-[900px] mx-auto px-6 mb-16">
           <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-8 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-brand-orange/5 rounded-full blur-2xl"></div>

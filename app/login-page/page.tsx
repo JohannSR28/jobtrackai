@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useAuth } from "@/hooks/useAuth"; // Import du hook
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 const translations = {
   fr: {
@@ -17,7 +18,6 @@ const translations = {
     and: "et notre",
     privacy: "Politique de confidentialité",
     backHome: "← Retour à l'accueil",
-    //  Ajout du message d'erreur demandé
     genericError: "Une erreur est survenue. Veuillez recommencer plus tard.",
   },
   en: {
@@ -39,7 +39,11 @@ export default function Login() {
   const { language } = useLanguage();
   const t = translations[language];
 
-  //  Intégration de la logique Auth
+  // 2. Récupérer les paramètres de l'URL
+  const searchParams = useSearchParams();
+  // On cherche le paramètre ?next=... Sinon par défaut c'est /dashboard
+  const nextRedirect = searchParams.get("next") || "/dashboard";
+
   const { signIn } = useAuth();
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,11 +52,11 @@ export default function Login() {
     setIsBusy(true);
     setError(null);
     try {
-      // On tente la connexion et on redirige vers le dashboard au retour
-      await signIn(provider, "/dashboard");
+      // 3. On passe la redirection dynamique à signIn
+      // Si on vient de Pricing, nextRedirect sera "/pricing-page"
+      await signIn(provider, nextRedirect);
     } catch (e) {
       console.error(e);
-      // En cas d'échec (ex: popup fermée, erreur réseau), on affiche le message
       setError(t.genericError);
       setIsBusy(false);
     }
@@ -95,7 +99,7 @@ export default function Login() {
             </p>
           </div>
 
-          {/*  Zone d'erreur (s'affiche uniquement si erreur) */}
+          {/* Zone d'erreur */}
           {error && (
             <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-sm text-center font-medium animate-in fade-in slide-in-from-top-2">
               {error}
