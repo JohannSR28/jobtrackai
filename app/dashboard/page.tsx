@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   AlertModal,
@@ -21,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useWallet } from "@/hooks/useWallet";
 import { useMailConnection } from "@/hooks/useMailConnection";
 import { useMailActions } from "@/hooks/useMailActions";
+import { useLanguage } from "@/hooks/useLanguage";
 
 import {
   JOB_STATUS,
@@ -30,6 +32,7 @@ import {
 } from "@/components/dashbord/_components/ui";
 
 import { HeaderBar } from "@/components/dashbord/_components/HeaderBar";
+import { SettingsDrawer } from "@/components/dashbord/_components/SettingsDrawer";
 import { ApplicationsPanel } from "@/components/dashbord/_components/ApplicationsPanel";
 import { Drawer } from "@/components/dashbord/_components/Drawer";
 import { EmailEditModal } from "@/components/dashbord/_components/EmailEditModal";
@@ -72,51 +75,87 @@ function toUtcIsoEndOfDay(dateStr: string) {
   return local.toISOString();
 }
 
-// --- BARRE DE PROGRESSION ---
-function CompactProgressBar({ scan }: { scan: ScanDTO }) {
+// --- BARRE DE PROGRESSION (AMÉLIORÉE) ---
+function CompactProgressBar({
+  scan,
+  forceActive, // Pour le Bleu (Resume)
+  forcePaused, //  Pour le Jaune (Pause)
+}: {
+  scan: ScanDTO;
+  forceActive: boolean;
+  forcePaused: boolean;
+}) {
   const { status, processedCount, totalCount, errorMessage } = scan;
   const rawPercent =
     totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
 
-  const isActive = status === "running" || status === "created";
+  let visualStatus = status;
+  if (forceActive) visualStatus = "running";
+  if (forcePaused) visualStatus = "paused";
+
+  const isActive = visualStatus === "running" || visualStatus === "created";
   const visualPercent = isActive && rawPercent < 5 ? 5 : rawPercent;
 
-  const isError = status === "failed" || !!errorMessage;
-  const isPaused = status === "paused";
+  const isError =
+    visualStatus === "failed" ||
+    visualStatus === "canceled" ||
+    (!!errorMessage && !forceActive);
+
+  const isPaused = visualStatus === "paused";
 
   return (
     <div className="mx-auto mb-6 flex max-w-7xl animate-in slide-in-from-top-2 items-center gap-4 px-1 duration-500">
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+          100% {
+            transform: translateX(100%);
+          }
+        }
+        .animate-shimmer {
+          animation: shimmer 1.5s infinite linear;
+        }
+      `}</style>
+
       <div
-        className={`relative flex h-10 flex-1 items-center overflow-hidden rounded-lg border shadow-sm backdrop-blur-sm transition-colors duration-500 ${
+        className={`relative flex h-10 flex-1 items-center overflow-hidden rounded-lg border shadow-sm backdrop-blur-sm transition-colors duration-300 ${
           isPaused
             ? "border-amber-500/30 bg-amber-900/20"
             : "border-slate-800 bg-slate-900/80"
         }`}
       >
         <div
-          className={`absolute inset-y-0 left-0 transition-all duration-700 ease-out ${
+          className={`absolute inset-y-0 left-0 overflow-hidden transition-all duration-500 ease-out ${
             isError
               ? "bg-red-500/20"
               : isPaused
-                ? "bg-amber-500/20"
-                : "animate-pulse bg-indigo-500/20"
+                ? "bg-amber-500/20" // 🟡 Jaune immédiat
+                : "bg-indigo-600/30"
           }`}
           style={{ width: `${visualPercent}%` }}
-        />
+        >
+          {isActive && (
+            <div className="absolute inset-0 w-full animate-shimmer bg-gradient-to-r from-transparent via-indigo-400/30 to-transparent" />
+          )}
+        </div>
+
         <div
-          className={`absolute bottom-0 left-0 h-1 transition-all duration-700 ${
+          className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${
             isError
               ? "bg-red-500"
               : isPaused
-                ? "bg-amber-500"
+                ? "bg-amber-500" // 🟡 Ligne Jaune
                 : "bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,1)]"
           }`}
           style={{ width: `${visualPercent}%` }}
         />
+
         <div className="relative z-10 flex w-full items-center justify-between px-4 text-xs font-medium">
           <div className="flex items-center gap-3">
             <span
-              className={`font-bold uppercase tracking-wider ${
+              className={`font-bold uppercase tracking-wider transition-colors duration-300 ${
                 isError
                   ? "text-red-400"
                   : isPaused
@@ -124,18 +163,25 @@ function CompactProgressBar({ scan }: { scan: ScanDTO }) {
                     : "text-indigo-400"
               }`}
             >
-              {isError
-                ? "Error"
-                : status === "running"
-                  ? "Scanning..."
-                  : status}
+              {/* 🟢 GESTION DES TEXTES INSTANTANÉS */}
+              {forceActive
+                ? "RESUMING..."
+                : forcePaused
+                  ? "PAUSING..."
+                  : visualStatus === "canceled"
+                    ? "STOPPED"
+                    : isError
+                      ? "Error"
+                      : visualStatus === "running"
+                        ? "Scanning..."
+                        : visualStatus}
             </span>
             <span className="hidden border-l border-white/10 pl-3 text-slate-400 sm:inline-block">
               {processedCount} / {totalCount} emails
             </span>
           </div>
           <div className="flex items-center gap-3">
-            {errorMessage && (
+            {errorMessage && !forceActive && (
               <span className="max-w-[200px] truncate text-red-400">
                 {errorMessage}
               </span>
@@ -235,9 +281,9 @@ function ScanStartModal(props: {
               <div className="text-xs text-slate-400">
                 {props.lastScanDate
                   ? `Reprendre depuis le : ${new Date(
-                      props.lastScanDate
+                      props.lastScanDate,
                     ).toLocaleDateString()} ${new Date(
-                      props.lastScanDate
+                      props.lastScanDate,
                     ).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -321,9 +367,31 @@ function ScanStartModal(props: {
 // --- PAGE PRINCIPALE ---
 
 export default function JobDomainPage() {
-  const { balance, loading: walletLoading, refreshBalance } = useWallet();
+  const router = useRouter();
 
-  // 1. DATA HOOK
+  const { signOut, deleteAccount, user, loading } = useAuth();
+  const { balance, loading: walletLoading, refreshBalance } = useWallet();
+  const { language, setLanguage } = useLanguage();
+
+  const {
+    scan,
+    init,
+    runLoop,
+    pause,
+    cancel,
+    isLooping,
+    action,
+    lastCheckpoint,
+    fetchCheckpoint,
+  } = useScanTester({ delayMs: 500 });
+
+  const {
+    status: mailStatus,
+    pollStatus: pollMailStatus,
+    connect: connectMail,
+  } = useMailConnection();
+  const { removeConnection } = useMailActions();
+
   const {
     getApplications,
     updateApplication,
@@ -334,89 +402,54 @@ export default function JobDomainPage() {
     error: hookError,
   } = useJobApplications();
 
-  // 2. AUTH HOOK
-  const { signOut, deleteAccount, user } = useAuth();
-
-  // 3. SCAN HOOK
-  const {
-    scan,
-    init,
-    runLoop,
-    pause,
-    cancel,
-    isLooping,
-    lastCheckpoint,
-    fetchCheckpoint,
-  } = useScanTester({ delayMs: 500 });
-
-  // 4. MAIL CONNECTION HOOK (ETAT)
-  const {
-    status: mailStatus,
-    pollStatus: pollMailStatus,
-    connect: connectMail,
-  } = useMailConnection();
-
-  // 5. MAIL ACTIONS HOOK (SUPPRESSION)
-  const { removeConnection } = useMailActions();
-
-  // --- ETATS LOCAUX UI ---
   const [data, setData] = useState<ApplicationsData | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isScanUiVisible, setIsScanUiVisible] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
 
   type ArchiveMode = "active" | "archived";
-
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("active");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [page, setPage] = useState<number>(1);
   const [isMobile, setIsMobile] = useState(false);
 
-  // States pour les Modales
   const [scanModalOpen, setScanModalOpen] = useState(false);
   const [resumeModalOpen, setResumeModalOpen] = useState(false);
-  const [mailConnectModalOpen, setMailConnectModalOpen] = useState(false); // <--- La modale de connexion
+  const [mailConnectModalOpen, setMailConnectModalOpen] = useState(false);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  // Config Scan
   const [scanMode, setScanMode] = useState<ScanMode>("since_last");
   const [scanStartDate, setScanStartDate] = useState(ONE_WEEK_AGO);
   const [scanEndDate, setScanEndDate] = useState(TODAY);
   const [isInitializingScan, setIsInitializingScan] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  // --- LOGIQUE D'AFFICHAGE INTELLIGENT ---
-  const [isScanUiVisible, setIsScanUiVisible] = useState(false);
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login-page");
+    }
+  }, [user, loading, router]);
 
-  // Vérifier le statut de connexion mail au montage
   useEffect(() => {
     pollMailStatus();
   }, [pollMailStatus]);
 
-  // Calcul du provider attendu (Gmail vs Outlook)
-  const expectedMailProvider = useMemo(() => {
-    const p = user?.app_metadata?.provider;
-    if (p === "google") return "gmail";
-    if (p === "azure") return "outlook";
-    return null;
-  }, [user]);
-
-  // Calcul état connecté (booléen simple)
-  const isMailConnected = !!(
-    mailStatus?.authenticated && mailStatus?.connected
-  );
-
   useEffect(() => {
-    if (isLooping) {
+    if (isLooping || isResuming || action === "pause") {
       setIsScanUiVisible(true);
       return;
     }
+
     if (scan && (scan.status === "running" || scan.status === "created")) {
       setIsScanUiVisible(true);
     } else if (
       scan &&
       (scan.status === "paused" ||
         scan.status === "completed" ||
-        scan.status === "failed")
+        scan.status === "failed" ||
+        scan.status === "canceled")
     ) {
       const timer = setTimeout(() => {
         setIsScanUiVisible(false);
@@ -425,7 +458,24 @@ export default function JobDomainPage() {
     } else {
       setIsScanUiVisible(false);
     }
-  }, [scan, scan?.status, isLooping]);
+  }, [scan, scan?.status, isLooping, isResuming, action]);
+
+  useEffect(() => {
+    if (scan?.status === "running") {
+      setIsResuming(false);
+    }
+  }, [scan?.status]);
+
+  const expectedMailProvider = useMemo(() => {
+    const p = user?.app_metadata?.provider;
+    if (p === "google") return "gmail";
+    if (p === "azure") return "outlook";
+    return null;
+  }, [user]);
+
+  const isMailConnected = !!(
+    mailStatus?.authenticated && mailStatus?.connected
+  );
 
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -463,11 +513,10 @@ export default function JobDomainPage() {
   const selectedEmailForModal =
     selectedBucket?.emails.find((e) => e.id === emailEditId) ?? null;
 
-  // Drawer helpers
   const [noteDraft, setNoteDraft] = useState("");
   const [appStatusDraft, setAppStatusDraft] = useState<JobStatus>("unknown");
   const [emailEditState, setEmailEditState] = useState<EmailEditState | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -490,17 +539,14 @@ export default function JobDomainPage() {
     });
   }, [selectedEmailForModal]);
 
-  // --- ACTIONS DU SCAN (LOGIQUE DE VERIFICATION) ---
+  // --- ACTIONS ---
 
   const handleScanButtonClick = () => {
-    // 🛑 1. Vérification : A-t-on l'accès mail ?
     if (!isMailConnected) {
-      // NON -> Ouvre la modale d'autorisation
       setMailConnectModalOpen(true);
       return;
     }
 
-    // OUI -> On continue vers la logique de scan habituelle
     const isActive =
       scan &&
       (scan.status === "created" ||
@@ -514,32 +560,28 @@ export default function JobDomainPage() {
     }
   };
 
-  // --- ACTIONS DE GESTION MAIL ---
-
-  // 1. Connexion (Redirection OAuth)
   const handleConnectMail = () => {
     if (expectedMailProvider) {
       connectMail(expectedMailProvider);
     } else {
       setAlertMessage(
-        "Impossible de déterminer le fournisseur (Gmail/Outlook)."
+        "Impossible de déterminer le fournisseur (Gmail/Outlook).",
       );
       setAlertModalOpen(true);
       setMailConnectModalOpen(false);
     }
   };
 
-  // 2. Déconnexion (Suppression en base)
   const handleRemoveMailConnection = async () => {
     const ok = window.confirm(
-      "Voulez-vous vraiment retirer l'accès à votre boîte mail ? Les scans ne seront plus possibles."
+      "Voulez-vous vraiment retirer l'accès à votre boîte mail ? Les scans ne seront plus possibles.",
     );
     if (!ok) return;
 
     try {
       const res = await removeConnection();
       if (res.ok) {
-        await pollMailStatus(); // Rafraîchir l'état
+        await pollMailStatus();
         alert("Accès retiré avec succès.");
       } else {
         setAlertMessage(`Erreur: ${res.message}`);
@@ -552,6 +594,7 @@ export default function JobDomainPage() {
     }
   };
 
+  // 👇 GESTION AMÉLIORÉE DES ERREURS DE SCAN (CORRIGÉE AVEC LE BON CHEMIN)
   const handleStartScanFromModal = async () => {
     setIsInitializingScan(true);
     try {
@@ -566,9 +609,26 @@ export default function JobDomainPage() {
       }
 
       if (result.mode === "invalid") {
-        setAlertMessage(
-          `Plage de date invalide: ${result.reason || "Vérifiez vos dates"}`
-        );
+        const reason = result.validation.reason;
+        let message = "Impossible d'initialiser le scan.";
+
+        if (reason === "TOO_MANY_MESSAGES") {
+          message =
+            "⚠️ Limite atteinte : Plus de 2000 emails détectés.\n\n" +
+            "Le scan est trop volumineux. Veuillez réduire la plage de dates pour scanner moins de jours.";
+        } else if (reason === "RANGE_TOO_LARGE") {
+          message =
+            "⚠️ Plage trop large : Vous ne pouvez pas scanner une période aussi longue d'un coup.\n\n" +
+            "Réduisez la durée sélectionnée. (90j Max)";
+        } else if (reason === "INVALID_RANGE") {
+          message =
+            "⚠️ Date invalide : Vos dates semblent incorrectes ou trop anciennes.\n\n" +
+            "Google limite l'accès aux emails de plus de 90 jours.";
+        } else {
+          message = `Erreur de validation : ${reason || "Inconnue"}`;
+        }
+
+        setAlertMessage(message);
         setAlertModalOpen(true);
         return;
       }
@@ -578,7 +638,7 @@ export default function JobDomainPage() {
           `Crédits insuffisants pour ce scan.\n\n` +
             `Coût estimé : ${result.required} crédits\n` +
             `Votre solde : ${result.current} crédits\n\n` +
-            `Il vous manque ${result.required - result.current} crédits.`
+            `Il vous manque ${result.required - result.current} crédits.`,
         );
         setAlertModalOpen(true);
         return;
@@ -591,14 +651,13 @@ export default function JobDomainPage() {
       }
     } catch (e) {
       console.error(e);
-      setAlertMessage("Erreur lors de l'initialisation du scan.");
+      setAlertMessage("Erreur technique lors de l'initialisation du scan.");
       setAlertModalOpen(true);
     } finally {
       setIsInitializingScan(false);
     }
   };
 
-  // --- SYNC DU SOLDE & DES DONNÉES ---
   useEffect(() => {
     if (!scan) return;
     const isBatchFinished = scan.processedCount > 0;
@@ -618,16 +677,13 @@ export default function JobDomainPage() {
     }
   }, [scan, scan?.status, scan?.processedCount, refreshBalance, fetchData]);
 
-  // --- AUTH ACTIONS ---
-  const LANDING_PAGE_URL = "https://jobtrackai-landing-page.vercel.app/";
-
   const handleLogout = async () => {
     try {
       await signOut();
     } catch (e) {
       console.error(e);
     } finally {
-      window.location.href = LANDING_PAGE_URL;
+      router.push("/login-page");
     }
   };
 
@@ -639,7 +695,7 @@ export default function JobDomainPage() {
     setIsDeletingAccount(true);
     try {
       await deleteAccount();
-      window.location.href = LANDING_PAGE_URL;
+      router.push("/login-page");
     } catch (e) {
       console.error(e);
       alert("Erreur lors de la suppression.");
@@ -648,7 +704,6 @@ export default function JobDomainPage() {
     }
   };
 
-  // --- CRUD ACTIONS ---
   const handleUpdateApplication = async () => {
     if (!selectedBucket) return;
     await updateApplication(selectedBucket.app.id, {
@@ -669,7 +724,7 @@ export default function JobDomainPage() {
     if (!window.confirm("Are you sure?")) return;
     await archiveApplication(
       selectedBucket.app.id,
-      !selectedBucket.app.archived
+      !selectedBucket.app.archived,
     );
     setSelectedAppId(null);
     await fetchData();
@@ -719,6 +774,14 @@ export default function JobDomainPage() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-7xl px-5 py-6">
@@ -730,25 +793,33 @@ export default function JobDomainPage() {
           poll={fetchData}
           profileMenuOpen={profileMenuOpen}
           setProfileMenuOpen={setProfileMenuOpen}
-          // Scan UI controls
-          scanRunning={isScanUiVisible && isLooping}
-          scanPaused={isScanUiVisible && scan?.status === "paused"}
+          scanRunning={(isScanUiVisible && isLooping) || isResuming}
+          scanPaused={
+            isScanUiVisible && scan?.status === "paused" && !isResuming
+          }
           onOpenScanModal={handleScanButtonClick}
           onPauseOrResume={() => {
-            if (isLooping) pause();
-            else if (scan) runLoop(scan.id);
+            if (isLooping) {
+              pause();
+            } else if (scan) {
+              setIsResuming(true);
+              runLoop(scan.id);
+              setResumeModalOpen(false);
+            }
           }}
           onStopScan={() => cancel()}
-          // Auth controls
           onLogout={handleLogout}
-          onDeleteAccount={handleOpenDeleteModal}
-          // Mail controls
-          isMailConnected={isMailConnected}
-          onConnectMail={() => setMailConnectModalOpen(true)}
-          onRemoveMailConnection={handleRemoveMailConnection}
+          onOpenSettings={() => setSettingsOpen(true)}
         />
 
-        {isScanUiVisible && scan && <CompactProgressBar scan={scan} />}
+        {/* On affiche la barre si scan visible, et on passe l'état optimiste */}
+        {isScanUiVisible && scan && (
+          <CompactProgressBar
+            scan={scan}
+            forceActive={isResuming}
+            forcePaused={action === "pause"}
+          />
+        )}
 
         {hookError && (
           <div className="mb-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
@@ -783,7 +854,16 @@ export default function JobDomainPage() {
         />
       </div>
 
-      {/* --- MODALE D'AUTORISATION MAIL --- */}
+      <SettingsDrawer
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onRemoveMailConnection={handleRemoveMailConnection}
+        onDeleteAccount={handleOpenDeleteModal}
+        isMailConnected={isMailConnected}
+        language={language}
+        setLanguage={setLanguage}
+      />
+
       <MailConnectModal
         open={mailConnectModalOpen}
         onClose={() => setMailConnectModalOpen(false)}
@@ -791,7 +871,6 @@ export default function JobDomainPage() {
         providerName={expectedMailProvider === "gmail" ? "Gmail" : "Outlook"}
       />
 
-      {/* --- AUTRES MODALES --- */}
       <ScanStartModal
         open={scanModalOpen}
         mode={scanMode}
@@ -811,8 +890,11 @@ export default function JobDomainPage() {
         status={scan?.status || "Unknown"}
         onClose={() => setResumeModalOpen(false)}
         onResume={() => {
-          if (scan) runLoop(scan.id);
-          setResumeModalOpen(false);
+          if (scan) {
+            setIsResuming(true);
+            runLoop(scan.id);
+            setResumeModalOpen(false);
+          }
         }}
         onStop={() => {
           if (scan) cancel(scan.id);
