@@ -18,35 +18,36 @@ export function clampInt(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.trunc(n)));
 }
 
+// 🟢 MÀJ COULEURS STATUTS (Pour fond blanc)
 export function statusTextClass(s: JobStatus): string {
   switch (s) {
     case "applied":
-      return "text-blue-300";
+      return "text-blue-600"; // Plus sombre pour lisibilité sur blanc
     case "offer":
-      return "text-emerald-300";
+      return "text-emerald-600";
     case "rejection":
-      return "text-red-300";
+      return "text-red-600";
     case "interview":
-      return "text-orange-300";
+      return "text-purple-600";
     case "unknown":
     default:
-      return "text-violet-300";
+      return "text-gray-400";
   }
 }
 
 export function statusDotClass(s: JobStatus): string {
   switch (s) {
     case "applied":
-      return "bg-blue-400";
+      return "bg-blue-500";
     case "offer":
-      return "bg-emerald-400";
+      return "bg-emerald-500";
     case "rejection":
-      return "bg-red-400";
+      return "bg-red-500";
     case "interview":
-      return "bg-orange-400";
+      return "bg-purple-500";
     case "unknown":
     default:
-      return "bg-violet-400";
+      return "bg-gray-300";
   }
 }
 
@@ -61,7 +62,7 @@ export function Dropdown(props: {
   return (
     <div
       className={[
-        "absolute z-50 mt-2 w-56 rounded-xl bg-slate-950/95 p-1 ring-1 ring-white/15 shadow-lg backdrop-blur",
+        "absolute z-50 mt-2 w-56 rounded-xl bg-white p-1.5 border border-gray-200 shadow-xl animate-in fade-in zoom-in-95 duration-100",
         props.align === "left" ? "left-0" : "right-0",
       ].join(" ")}
     >
@@ -82,10 +83,10 @@ export function MenuItem(props: {
       disabled={props.disabled}
       onClick={props.onClick}
       className={[
-        "w-full rounded-lg px-3 py-2 text-left text-xs font-semibold",
+        "w-full rounded-lg px-3 py-2 text-left text-xs font-bold transition-colors",
         props.danger
-          ? "text-red-100 hover:bg-red-500/15 disabled:opacity-60"
-          : "text-slate-100 hover:bg-white/10 disabled:opacity-60",
+          ? "text-red-600 hover:bg-red-50 disabled:opacity-50"
+          : "text-gray-600 hover:bg-gray-100 hover:text-black disabled:opacity-50",
       ].join(" ")}
     >
       {props.label}
@@ -104,28 +105,40 @@ export function ModalShell(props: {
   return (
     <>
       <div
-        className="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+        className="fixed inset-0 z-[70] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300"
         onClick={props.onClose}
       />
-      <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 pointer-events-none">
-        <div className="w-full max-w-[560px] rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl pointer-events-auto animate-in zoom-in-95 duration-200">
-          <div className="flex items-start justify-between gap-3 mb-4">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 pointer-events-none">
+        <div className="w-full max-w-[500px] rounded-2xl bg-white border border-gray-100 p-6 shadow-2xl pointer-events-auto animate-in zoom-in-95 duration-300 relative">
+          <div className="flex items-start justify-between gap-4 mb-6">
             <div className="min-w-0">
-              <div className="truncate text-lg font-bold text-slate-100">
+              <div className="gen-typo text-xl tracking-tight text-black">
                 {props.title}
               </div>
               {props.subtitle ? (
-                <div className="truncate text-xs text-slate-400 mt-1">
+                <div className="truncate text-sm text-gray-500 font-medium mt-1">
                   {props.subtitle}
                 </div>
               ) : null}
             </div>
             <button
               type="button"
-              className="rounded-lg bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10 transition-colors"
+              className="rounded-full p-2 bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-black transition-colors"
               onClick={props.onClose}
             >
-              Fermer
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
             </button>
           </div>
           <div>{props.children}</div>
@@ -142,14 +155,14 @@ export function ToggleMini(props: {
   onChange: (v: "left" | "right") => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg bg-white/5 ring-1 ring-white/10 p-0.5">
+    <div className="inline-flex rounded-lg bg-gray-100 p-1 shadow-inner border border-gray-200">
       <button
         type="button"
         className={[
-          "rounded-md px-2 py-1 text-xs font-semibold transition-all",
+          "rounded-md px-3 py-1.5 text-xs font-bold transition-all duration-200",
           props.value === "left"
-            ? "bg-white/10 text-white"
-            : "text-slate-400 hover:bg-white/5",
+            ? "bg-brand-orange text-black shadow-sm" // ICI : Orange
+            : "text-gray-500 hover:text-gray-700",
         ].join(" ")}
         onClick={() => props.onChange("left")}
       >
@@ -158,10 +171,10 @@ export function ToggleMini(props: {
       <button
         type="button"
         className={[
-          "rounded-md px-2 py-1 text-xs font-semibold transition-all",
+          "rounded-md px-3 py-1.5 text-xs font-bold transition-all duration-200",
           props.value === "right"
-            ? "bg-white/10 text-white"
-            : "text-slate-400 hover:bg-white/5",
+            ? "bg-brand-orange text-black shadow-sm" // ICI : Orange
+            : "text-gray-500 hover:text-gray-700",
         ].join(" ")}
         onClick={() => props.onChange("right")}
       >
@@ -170,7 +183,6 @@ export function ToggleMini(props: {
     </div>
   );
 }
-
 // --- SPECIFIC MODALS ---
 
 export function AlertModal({
@@ -186,11 +198,13 @@ export function AlertModal({
 }) {
   return (
     <ModalShell open={open} title={title} onClose={onClose}>
-      <div className="text-sm text-slate-300 mb-6">{message}</div>
+      <div className="text-sm font-medium text-gray-600 mb-8 leading-relaxed whitespace-pre-line">
+        {message}
+      </div>
       <div className="flex justify-end">
         <button
           onClick={onClose}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500 transition-colors"
+          className="rounded-xl bg-black px-6 py-3 text-xs font-bold text-white hover:bg-gray-800 transition-colors shadow-lg"
         >
           OK, compris
         </button>
@@ -213,22 +227,25 @@ export function ResumeScanModal({
   onClose: () => void;
 }) {
   return (
-    <ModalShell open={open} title="Scan en cours détecté" onClose={onClose}>
-      <div className="text-sm text-slate-300 mb-6 space-y-2">
+    <ModalShell open={open} title="SCAN DETECTED" onClose={onClose}>
+      <div className="text-sm text-gray-600 mb-8 space-y-2 font-medium">
         <p>
           Un scan est actuellement{" "}
-          <strong className="text-amber-400 uppercase">{status}</strong>.
+          <strong className="text-[#ff9f43] uppercase bg-orange-50 px-2 py-0.5 rounded">
+            {status}
+          </strong>
+          .
         </p>
         <p>Que souhaitez-vous faire ?</p>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+      <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
         <button
           onClick={() => {
             onStop();
             onClose();
           }}
-          className="rounded-lg bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-200 ring-1 ring-red-500/20 hover:bg-red-500/20 transition-colors"
+          className="rounded-xl bg-red-50 px-4 py-3 text-xs font-bold text-red-600 border border-red-100 hover:bg-red-100 transition-colors"
         >
           Arrêter le scan
         </button>
@@ -237,7 +254,7 @@ export function ResumeScanModal({
             onResume();
             onClose();
           }}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-colors"
+          className="rounded-xl bg-[#ff9f43] px-6 py-3 text-xs font-bold text-black shadow-lg shadow-orange-500/20 hover:bg-[#e68e3c] transition-colors"
         >
           Reprendre
         </button>
@@ -258,12 +275,11 @@ export function DeleteAccountModal({
   onConfirm: () => void;
 }) {
   return (
-    <ModalShell open={open} title="Supprimer le compte" onClose={onClose}>
-      <div className="space-y-4">
-        <div className="rounded-xl bg-red-500/10 p-4 border border-red-500/20">
+    <ModalShell open={open} title="SUPPRIMER LE COMPTE" onClose={onClose}>
+      <div className="space-y-6">
+        <div className="rounded-xl bg-red-50 p-4 border border-red-100">
           <div className="flex gap-3">
-            <div className="text-red-400">
-              {/* Icone Danger SVG inline */}
+            <div className="text-red-500 mt-0.5">
               <svg
                 className="h-5 w-5"
                 viewBox="0 0 20 20"
@@ -277,9 +293,9 @@ export function DeleteAccountModal({
                 />
               </svg>
             </div>
-            <div className="text-sm text-red-200">
+            <div className="text-sm text-red-800">
               <h3 className="font-bold">Attention, action irréversible</h3>
-              <p className="mt-1 text-red-200/80">
+              <p className="mt-1 text-red-600 font-medium leading-relaxed">
                 Vous êtes sur le point de supprimer définitivement votre compte
                 et toutes vos données associées (candidatures, emails, scans).
               </p>
@@ -287,16 +303,17 @@ export function DeleteAccountModal({
           </div>
         </div>
 
-        <p className="text-sm text-slate-400">
-          Voulez-vous vraiment continuer ?
+        <p className="text-sm text-gray-500 font-medium px-1">
+          Voulez-vous vraiment continuer ? Cette action ne peut pas être
+          annulée.
         </p>
 
-        <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-lg bg-white/5 px-4 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10 transition-colors disabled:opacity-50"
+            className="rounded-xl bg-white px-5 py-3 text-xs font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Annuler
           </button>
@@ -304,7 +321,7 @@ export function DeleteAccountModal({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className="flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-red-500/20 hover:bg-red-500 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             {busy ? "Suppression..." : "Confirmer la suppression"}
           </button>

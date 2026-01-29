@@ -36,7 +36,6 @@ export function Drawer(props: DrawerProps) {
   if (!props.selectedBucket) return null;
   const b = props.selectedBucket;
 
-  // 👇 CORRECTION ICI : Utilisation de received_at
   const sortedEmails = [...b.emails].sort((a, b) => {
     const dateA = a.received_at ? new Date(a.received_at).getTime() : 0;
     const dateB = b.received_at ? new Date(b.received_at).getTime() : 0;
@@ -45,160 +44,227 @@ export function Drawer(props: DrawerProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40" onClick={props.onClose} />
+      <div
+        className="fixed inset-0 z-40 bg-black/10 backdrop-blur-sm transition-opacity"
+        onClick={props.onClose}
+      />
 
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[540px] bg-slate-950/95 shadow-2xl">
-        <div className="h-full overflow-y-auto">
-          <div className="px-4 pt-4">
-            <div className="flex items-start justify-between gap-3">
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-[540px] bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.05)] border-l border-gray-100 transform transition-transform duration-300">
+        <div className="h-full overflow-y-auto flex flex-col">
+          {/* Header */}
+          <div className="px-8 pt-8 pb-6 bg-white shrink-0">
+            <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <div className="truncate text-lg font-extrabold">
-                  {b.app.company ?? "—"}
+                <div className="gen-typo text-3xl tracking-tight text-black break-words">
+                  {b.app.company ?? "Unknown Company"}
                 </div>
-                <div className="truncate text-sm text-slate-300">
-                  {b.app.position ?? "—"}
-                </div>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {/* Status Button */}
-                  <button
-                    type="button"
-                    onClick={props.onOpenStatusModal}
-                    disabled={props.busy}
-                    className="flex items-center gap-2 rounded-lg bg-white/5 px-2 py-1.5 ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60 transition-all"
-                  >
-                    <span
-                      className={[
-                        "h-2 w-2 rounded-full",
-                        statusDotClass(props.appStatusDraft),
-                      ].join(" ")}
-                    />
-                    <span
-                      className={[
-                        "text-xs font-semibold",
-                        statusText(props.appStatusDraft),
-                      ].join(" ")}
-                    >
-                      {props.appStatusDraft}
-                    </span>
-                  </button>
-
-                  <div className="ml-1 text-xs text-slate-400">
-                    • {b.emails.length} email{b.emails.length !== 1 ? "s" : ""}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="rounded-lg bg-amber-500/10 px-2 py-1.5 text-xs font-semibold text-amber-200 ring-1 ring-amber-400/30 hover:bg-amber-500/20 disabled:opacity-60 transition-all"
-                    disabled={props.busy}
-                    onClick={props.onArchiveApplication}
-                  >
-                    {b.app.archived ? "Unarchive" : "Archive"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="rounded-lg bg-red-500/10 px-2 py-1.5 text-xs font-semibold text-red-200 ring-1 ring-red-400/30 hover:bg-red-500/20 disabled:opacity-60 transition-all"
-                    disabled={props.busy}
-                    onClick={props.onDeleteApplication}
-                  >
-                    Delete
-                  </button>
+                <div className="text-base text-gray-500 font-medium mt-1">
+                  {b.app.position ?? "Position not specified"}
                 </div>
               </div>
-
               <button
                 type="button"
-                className="rounded-lg bg-white/5 px-2 py-1 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+                className="rounded-full p-2 bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-black transition-colors"
                 onClick={props.onClose}
               >
-                Close
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Actions Bar */}
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={props.onOpenStatusModal}
+                disabled={props.busy}
+                className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all"
+              >
+                <span
+                  className={[
+                    "h-2.5 w-2.5 rounded-full ring-2 ring-white",
+                    statusDotClass(props.appStatusDraft),
+                  ].join(" ")}
+                />
+                <span
+                  className={[
+                    "text-xs font-bold uppercase tracking-wide",
+                    statusText(props.appStatusDraft),
+                  ].join(" ")}
+                >
+                  {props.appStatusDraft}
+                </span>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  className="text-gray-400 ml-1"
+                >
+                  <path
+                    d="M3 4.5L6 7.5L9 4.5"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <div className="h-6 w-px bg-gray-200 mx-1"></div>
+
+              <button
+                type="button"
+                className={`rounded-xl px-4 py-2.5 text-xs font-bold border transition-all ${
+                  b.app.archived
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
+                disabled={props.busy}
+                onClick={props.onArchiveApplication}
+              >
+                {b.app.archived ? "Archived" : "Archive"}
+              </button>
+
+              <button
+                type="button"
+                className="rounded-xl bg-red-50 px-4 py-2.5 text-xs font-bold text-red-600 border border-red-100 hover:bg-red-100 hover:border-red-200 transition-all ml-auto"
+                disabled={props.busy}
+                onClick={props.onDeleteApplication}
+              >
+                Delete
               </button>
             </div>
           </div>
 
-          <div className="px-4 pt-3">
-            <div className="text-xs font-bold text-slate-200">Note</div>
-            <textarea
-              className="mt-1 w-full min-h-[90px] rounded-xl bg-slate-950/30 px-3 py-2 text-sm ring-1 ring-white/10 outline-none focus:ring-indigo-400/30"
-              value={props.noteDraft}
-              onChange={(e) => props.setNoteDraft(e.target.value)}
-              placeholder="Écris une note…"
-            />
-            <div className="mt-2 flex gap-2">
-              <button
-                type="button"
-                className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
-                disabled={props.busy || !props.noteDirty}
-                onClick={props.onSaveApplication}
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10 disabled:opacity-60"
-                disabled={props.busy || !props.noteDirty}
-                onClick={props.onResetNote}
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-
-          <div className="px-4 pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-bold text-slate-200">Emails</div>
-              <div className="text-[11px] text-slate-400">
-                {b.emails.length}
+          {/* Body Content */}
+          <div className="flex-1 overflow-y-auto">
+            {/* Notes Section */}
+            <div className="px-8 py-6 bg-gray-50/50 border-t border-b border-gray-100">
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  Personal Notes
+                </div>
+                {props.noteDirty && (
+                  <span className="text-[10px] font-bold text-brand-orange bg-brand-orange/10 px-2 py-1 rounded-md">
+                    Unsaved changes
+                  </span>
+                )}
               </div>
+
+              <textarea
+                className="w-full min-h-[120px] rounded-xl bg-white border border-gray-200 px-4 py-3 text-sm font-medium text-black outline-none focus:border-brand-orange focus:ring-1 focus:ring-brand-orange transition-all placeholder:text-gray-300 resize-none shadow-sm"
+                value={props.noteDraft}
+                onChange={(e) => props.setNoteDraft(e.target.value)}
+                placeholder="Add private notes about this application..."
+              />
+
+              {props.noteDirty && (
+                <div className="mt-3 flex gap-2 animate-in slide-in-from-top-2 fade-in duration-200">
+                  <button
+                    type="button"
+                    className="rounded-lg bg-brand-orange px-4 py-2 text-xs font-bold text-black hover:bg-brand-orange-hover shadow-sm"
+                    disabled={props.busy}
+                    onClick={props.onSaveApplication}
+                  >
+                    Save Note
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-white px-4 py-2 text-xs font-bold text-gray-600 border border-gray-200 hover:bg-gray-50"
+                    disabled={props.busy}
+                    onClick={props.onResetNote}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="mt-2 space-y-2">
-              {sortedEmails.map((em) => (
-                <div key={em.id} className="bg-white/5 rounded-xl px-3 py-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-xs font-extrabold text-slate-100">
-                        {em.from_text ?? "—"}
+            {/* Emails Section */}
+            <div className="px-8 py-8 bg-white pb-20">
+              <div className="flex items-center justify-between mb-6">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  Email History
+                </div>
+                <div className="text-xs font-bold text-black bg-gray-100 px-2 py-1 rounded-md">
+                  {b.emails.length}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {sortedEmails.map((em) => (
+                  <div
+                    key={em.id}
+                    className="group bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:border-brand-orange/50 hover:shadow-md transition-all duration-300"
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-black truncate">
+                          {em.from_text || "Unknown Sender"}
+                        </div>
+                        <div className="text-xs text-gray-500 font-medium truncate mt-0.5">
+                          {em.subject || "No Subject"}
+                        </div>
                       </div>
-                      <div className="truncate text-[11px] text-slate-300">
-                        {em.subject ?? "—"}
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-400">
-                        <span
-                          className={[
-                            "font-semibold",
-                            statusText(em.status),
-                          ].join(" ")}
-                        >
-                          {em.status}
-                        </span>
-                        {/* 👇 CORRECTION ICI AUSSI : received_at */}
-                        {em.received_at ? (
-                          <span className="text-slate-500">
-                            {" "}
-                            • {new Date(em.received_at).toLocaleString()}
-                          </span>
-                        ) : null}
-                      </div>
+                      <button
+                        type="button"
+                        className="opacity-0 group-hover:opacity-100 rounded-lg bg-gray-50 px-3 py-1.5 text-[10px] font-bold text-gray-600 border border-gray-200 hover:bg-white hover:text-brand-orange hover:border-brand-orange transition-all"
+                        onClick={() => props.onEditEmail(em.id)}
+                      >
+                        Edit
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      className="rounded-lg bg-indigo-500/20 px-2 py-1 text-[11px] font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
-                      disabled={props.busy}
-                      onClick={() => props.onEditEmail(em.id)}
-                    >
-                      Edit
-                    </button>
-                  </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div
+                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                          em.status === "rejection"
+                            ? "bg-red-50 text-red-600 border-red-100"
+                            : em.status === "interview"
+                              ? "bg-purple-50 text-purple-600 border-purple-100"
+                              : em.status === "offer"
+                                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                                : "bg-gray-50 text-gray-600 border-gray-200"
+                        }`}
+                      >
+                        {em.status}
+                      </div>
+                      {em.received_at && (
+                        <div className="text-[10px] text-gray-400 font-medium">
+                          {new Date(em.received_at).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </div>
+                      )}
+                    </div>
 
-                  <div className="mt-2 text-[11px] text-slate-400">Snippet</div>
-                  <div className="mt-1 whitespace-pre-wrap text-xs text-slate-200">
-                    {(em.snippet ?? "—").trim() || "—"}
+                    <div className="relative">
+                      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-100 rounded-full"></div>
+                      <div className="pl-3 text-xs text-gray-600 leading-relaxed font-medium line-clamp-3 group-hover:line-clamp-none transition-all">
+                        {(em.snippet || "").trim() || "No preview available."}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>

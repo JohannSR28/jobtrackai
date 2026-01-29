@@ -1,146 +1,39 @@
-import Link from "next/link";
+"use client";
 
-type LinkItem = {
-  href: string;
-  label: string;
-  module?: string; // ex: "Module 1"
-  status: "done" | "inProgress" | "todo";
-};
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth"; // Assure-toi que le chemin est bon
 
-const UI_PAGES: LinkItem[] = [
-  {
-    href: "/landing-page",
-    label: "Landing Page",
-    status: "done",
-  },
-  {
-    href: "/login-page",
-    label: "Login Page",
-    status: "done",
-  },
-  { href: "/pricing-page", label: "Pricing Page", status: "done" },
-];
+export default function RootPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-const FEATURE_PAGES: LinkItem[] = [
-  {
-    href: "/auth-test-page",
-    label: "Authentification Test",
-    module: "Module 1",
-    status: "done",
-  },
-  {
-    href: "/mail-connection-test-page",
-    label: "Mail Connection Test",
-    module: "Module 2",
-    status: "done",
-  },
-  {
-    href: "/scan-with-time-section-test-page",
-    label: "Scan With Time Section Test",
-    module: "Module 3 & 4",
-    status: "done",
-  },
-  {
-    href: "/ai-analysis-test-page",
-    label: "AI Analysis Test",
-    module: "Module 5",
-    status: "done",
-  },
-  {
-    href: "/dashboard",
-    label: "Dashboard (UI Finale)",
-    module: "Module 8",
-    status: "inProgress",
-  },
-];
+  useEffect(() => {
+    // Si le chargement est terminé
+    if (!loading) {
+      if (user) {
+        // 1. Utilisateur connecté -> Dashboard
+        router.replace("/dashboard");
+      } else {
+        // 2. Pas connecté -> Login
+        router.replace("/login-page");
+      }
+    }
+  }, [user, loading, router]);
 
-// Styles par statut
-function getButtonColor(status: LinkItem["status"]) {
-  if (status === "done") return "bg-green-600 hover:bg-green-700";
-  if (status === "inProgress") return "bg-orange-500 hover:bg-orange-600";
-  return "bg-slate-700 hover:bg-slate-800";
-}
-
-function Section({
-  title,
-  description,
-  items,
-}: {
-  title: string;
-  description: string;
-  items: LinkItem[];
-}) {
+  // --- ÉCRAN DE CHARGEMENT (Style GenLabs) ---
+  // On l'affiche tant que 'loading' est vrai OU tant qu'on n'a pas encore redirigé
   return (
-    <section className="space-y-3">
-      <div className="text-left">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <p className="text-sm text-slate-600">{description}</p>
+    <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center font-sans text-gray-500">
+      <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+        {/* Le Spinner Orange */}
+        <div className="w-10 h-10 rounded-full border-2 border-gray-200 border-t-[#ff9f43] animate-spin"></div>
+
+        {/* Le Texte Typo GenLabs */}
+        <span className="gen-typo text-xs font-bold tracking-[0.2em] text-black">
+          LOADING...
+        </span>
       </div>
-
-      <ul className="flex flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className={[
-                "block w-full px-6 py-3 text-white rounded-lg font-medium transition shadow-sm",
-                "flex items-center justify-between gap-4",
-                getButtonColor(item.status),
-              ].join(" ")}
-            >
-              <span className="text-left">
-                <span className="block">{item.label}</span>
-                {item.module ? (
-                  <span className="block text-xs text-white/80">
-                    {item.module}
-                  </span>
-                ) : null}
-              </span>
-
-              <span className="text-xs font-semibold text-white/90">
-                {item.status === "done"
-                  ? "DONE"
-                  : item.status === "inProgress"
-                    ? "IN PROGRESS"
-                    : "TODO"}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-export default function HomePage() {
-  return (
-    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl space-y-8">
-        {/* Header */}
-        <header className="text-center">
-          <h1 className="text-4xl font-bold text-slate-900 tracking-tight">
-            Welcome to JobTrackAI
-          </h1>
-          <p className="mt-4 text-slate-600">
-            Hub de navigation: pages UI (visuel) vs pages modules (tests de
-            fonctionnalités).
-          </p>
-        </header>
-
-        {/* UI pages (purement visuel) */}
-        <Section
-          title="Pages UI"
-          description="Pages purement frontales, sans logique métier."
-          items={UI_PAGES}
-        />
-
-        {/* Feature pages */}
-        <Section
-          title="Modules (Fonctionnalités & Tests)"
-          description="Pages de test pour valider l’auth, la connexion mail, les scans, et l’analyse."
-          items={FEATURE_PAGES}
-        />
-      </div>
-    </main>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
-// app/job-domain-test-fake/_components/StatusChangeModal.tsx
 "use client";
 
-import type { JobStatus } from "@/app/_fake/fakeJobDomainData";
+import type { JobStatus } from "@/hooks/useJobApplications";
 import { ModalShell, statusTextClass, statusDotClass } from "./ui";
 
 export function StatusChangeModal(props: {
@@ -22,24 +21,28 @@ export function StatusChangeModal(props: {
   return (
     <ModalShell
       open={props.open}
-      title="Change status"
-      subtitle="Select a new status for this application"
+      title="CHANGE STATUS"
+      subtitle="Select a new stage for this application"
       onClose={props.onClose}
     >
-      <div className="space-y-2">
-        <div className="text-xs text-slate-400 mb-3">
-          Current status:{" "}
+      <div className="space-y-6">
+        {/* Indicateur du statut actuel */}
+        <div className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest bg-gray-50 p-3 rounded-lg border border-gray-100">
+          <span>Current:</span>
           <span
             className={[
-              "font-semibold",
-              statusTextClass(props.currentStatus),
+              "flex items-center gap-1.5 px-2 py-0.5 rounded bg-white border border-gray-200 shadow-sm text-black",
             ].join(" ")}
           >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${statusDotClass(props.currentStatus)}`}
+            />
             {props.currentStatus}
           </span>
         </div>
 
-        <div className="grid gap-2">
+        {/* Grille des choix */}
+        <div className="grid gap-3">
           {statuses.map((status) => {
             const isCurrent = status === props.currentStatus;
 
@@ -49,42 +52,71 @@ export function StatusChangeModal(props: {
                 type="button"
                 disabled={props.busy || isCurrent}
                 onClick={() => {
+                  // On garde le confirm window pour la sécurité, comme demandé
                   if (
                     window.confirm(
-                      `Are you sure you want to change the status to "${status}"?`
+                      `Are you sure you want to change the status to "${status}"?`,
                     )
                   ) {
                     props.onConfirm(status);
                   }
                 }}
                 className={[
-                  "flex items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold ring-1 transition-all",
+                  "group flex items-center gap-4 rounded-xl px-4 py-3.5 text-left text-sm font-bold border transition-all duration-200",
                   isCurrent
-                    ? "bg-white/10 ring-white/20 cursor-not-allowed opacity-60"
-                    : "bg-white/5 ring-white/10 hover:bg-white/10 hover:ring-white/20",
+                    ? "bg-gray-50 border-gray-200 cursor-default opacity-60 grayscale"
+                    : "bg-white border-gray-200 hover:border-brand-orange hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]",
                 ].join(" ")}
               >
+                {/* Dot Visuel */}
                 <span
                   className={[
-                    "h-3 w-3 rounded-full",
+                    "h-3 w-3 rounded-full ring-2 ring-white shadow-sm transition-transform group-hover:scale-110",
                     statusDotClass(status),
                   ].join(" ")}
                 />
-                <span className={statusTextClass(status)}>{status}</span>
+
+                {/* Texte du statut */}
+                <span
+                  className={[
+                    "uppercase tracking-wide",
+                    isCurrent ? "text-gray-400" : statusTextClass(status),
+                  ].join(" ")}
+                >
+                  {status}
+                </span>
+
+                {/* Indicateur (Current) ou Flèche (Hover) */}
                 {isCurrent ? (
-                  <span className="ml-auto text-xs text-slate-400">
-                    (current)
+                  <span className="ml-auto text-[10px] text-gray-400 font-bold bg-gray-200/50 px-2 py-1 rounded">
+                    CURRENT
                   </span>
-                ) : null}
+                ) : (
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="ml-auto text-gray-300 opacity-0 -translate-x-2 transition-all group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-brand-orange"
+                  >
+                    <path d="M5 12h14" />
+                    <path d="m12 5 7 7-7 7" />
+                  </svg>
+                )}
               </button>
             );
           })}
         </div>
 
+        {/* Bouton Annuler */}
         <div className="pt-2">
           <button
             type="button"
-            className="w-full rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
+            className="w-full rounded-xl bg-white px-4 py-3 text-xs font-bold text-gray-500 border border-gray-200 hover:bg-gray-50 hover:text-black transition-colors"
             onClick={props.onClose}
           >
             Cancel

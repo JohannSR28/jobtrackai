@@ -16,65 +16,91 @@ export function ScanStartModal(props: {
   return (
     <ModalShell
       open={props.open}
-      title="Start scan"
-      subtitle="Choose how to scan (prototype)"
+      title="START SCAN"
+      subtitle="Choose synchronization mode"
       onClose={props.onClose}
     >
-      <div className="space-y-3 text-sm text-slate-200">
-        <div className="text-xs text-slate-400">
-          (You’ll redesign this modal later — for now it just triggers a fake scan.)
-        </div>
-
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-sm">
+      <div className="space-y-5 text-sm">
+        <div className="space-y-3">
+          {/* Option 1: Since Last */}
+          <label
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-all duration-200 ${
+              props.mode === "since_last"
+                ? "border-brand-orange bg-brand-orange/5 shadow-sm"
+                : "border-gray-200 bg-white hover:border-gray-300"
+            }`}
+          >
             <input
               type="radio"
               name="scanMode"
+              className="accent-brand-orange w-4 h-4"
               checked={props.mode === "since_last"}
               onChange={() => props.setMode("since_last")}
             />
-            <span>Reprendre depuis la dernière fois</span>
-          </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="scanMode"
-              checked={props.mode === "custom"}
-              onChange={() => props.setMode("custom")}
-            />
-            <span>Reprendre depuis une date</span>
-          </label>
-
-          {props.mode === "custom" ? (
-            <div className="mt-2 flex items-center gap-2">
-              <div className="text-xs text-slate-400">Date</div>
-              <input
-                type="date"
-                className="rounded-xl bg-slate-950/40 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 outline-none"
-                value={props.startDate}
-                onChange={(e) => props.setStartDate(e.target.value)}
-              />
+            <div>
+              <div className="font-bold text-black text-sm">Smart Resume</div>
+              <div className="text-xs text-gray-500 font-medium">
+                Reprendre depuis la dernière fois
+              </div>
             </div>
-          ) : null}
+          </label>
+
+          {/* Option 2: Custom */}
+          <label
+            className={`flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 ${
+              props.mode === "custom"
+                ? "border-brand-orange bg-brand-orange/5 shadow-sm"
+                : "border-gray-200 bg-white hover:border-gray-300"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <input
+                type="radio"
+                name="scanMode"
+                className="accent-brand-orange w-4 h-4"
+                checked={props.mode === "custom"}
+                onChange={() => props.setMode("custom")}
+              />
+              <div>
+                <div className="font-bold text-black text-sm">Custom Date</div>
+                <div className="text-xs text-gray-500 font-medium">
+                  Reprendre depuis une date précise
+                </div>
+              </div>
+            </div>
+
+            {props.mode === "custom" && (
+              <div className="mt-2 pl-7 animate-in slide-in-from-top-1 fade-in duration-200">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+                  Start Date
+                </div>
+                <input
+                  type="date"
+                  className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm font-medium text-black outline-none focus:border-brand-orange focus:ring-1 focus:ring-brand-orange transition-all"
+                  value={props.startDate}
+                  onChange={(e) => props.setStartDate(e.target.value)}
+                />
+              </div>
+            )}
+          </label>
         </div>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
           <button
             type="button"
-            className="rounded-xl bg-indigo-500/20 px-3 py-2 text-xs font-semibold ring-1 ring-indigo-400/30 hover:bg-indigo-500/30 disabled:opacity-60"
-            disabled={props.mode === "custom" && !props.startDate}
-            onClick={props.onStart}
+            className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+            onClick={props.onClose}
           >
-            Start
+            Cancel
           </button>
 
           <button
             type="button"
-            className="rounded-xl bg-white/5 px-3 py-2 text-xs font-semibold ring-1 ring-white/10 hover:bg-white/10"
-            onClick={props.onClose}
+            className="rounded-xl bg-black px-6 py-2 text-xs font-bold text-white shadow-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            disabled={props.mode === "custom" && !props.startDate}
+            onClick={props.onStart}
           >
-            Cancel
+            Start Scan
           </button>
         </div>
       </div>

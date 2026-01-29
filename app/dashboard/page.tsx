@@ -3,26 +3,13 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
+// --- IMPORTS UI ---
 import {
   AlertModal,
   ResumeScanModal,
   DeleteAccountModal,
   ModalShell,
 } from "@/components/dashbord/_components/ui";
-
-import {
-  useJobApplications,
-  type Bucket,
-  type JobStatus,
-  type StatusFilter,
-} from "@/hooks/useJobApplications";
-
-import { useScanTester, type ScanDTO } from "@/hooks/useScanTester";
-import { useAuth } from "@/hooks/useAuth";
-import { useWallet } from "@/hooks/useWallet";
-import { useMailConnection } from "@/hooks/useMailConnection";
-import { useMailActions } from "@/hooks/useMailActions";
-import { useLanguage } from "@/hooks/useLanguage";
 
 import {
   JOB_STATUS,
@@ -37,6 +24,28 @@ import { ApplicationsPanel } from "@/components/dashbord/_components/Application
 import { Drawer } from "@/components/dashbord/_components/Drawer";
 import { EmailEditModal } from "@/components/dashbord/_components/EmailEditModal";
 import { StatusChangeModal } from "@/components/dashbord/_components/StatusChangeModal";
+
+// Import des icônes pour la nouvelle Toolbar
+import {
+  IconRefresh,
+  IconPause,
+  IconStop,
+} from "@/components/dashbord/_components/icons";
+
+// --- IMPORTS HOOKS ---
+import {
+  useJobApplications,
+  type Bucket,
+  type JobStatus,
+  type StatusFilter,
+} from "@/hooks/useJobApplications";
+
+import { useScanTester, type ScanDTO } from "@/hooks/useScanTester";
+import { useAuth } from "@/hooks/useAuth";
+import { useWallet } from "@/hooks/useWallet";
+import { useMailConnection } from "@/hooks/useMailConnection";
+import { useMailActions } from "@/hooks/useMailActions";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // --- TYPES LOCAUX ---
 
@@ -53,6 +62,8 @@ type EmailEditState = {
   status: JobStatus;
   eventType: string;
 };
+
+type ScanMode = "since_last" | "custom";
 
 // --- HELPERS DATE ---
 const TODAY = new Date().toISOString().split("T")[0];
@@ -75,36 +86,43 @@ function toUtcIsoEndOfDay(dateStr: string) {
   return local.toISOString();
 }
 
-// --- BARRE DE PROGRESSION (AMÉLIORÉE) ---
+// --- BARRE DE PROGRESSION (STYLE GENLABS) ---
 function CompactProgressBar({
   scan,
-  forceActive, // Pour le Bleu (Resume)
-  forcePaused, //  Pour le Jaune (Pause)
+  forceActive,
+  forcePaused,
+  forceStopped,
 }: {
   scan: ScanDTO;
   forceActive: boolean;
   forcePaused: boolean;
+  forceStopped: boolean;
 }) {
   const { status, processedCount, totalCount, errorMessage } = scan;
   const rawPercent =
     totalCount > 0 ? Math.round((processedCount / totalCount) * 100) : 0;
 
+  // 1. Détermination de l'état visuel (Priorité aux états forcés)
   let visualStatus = status;
   if (forceActive) visualStatus = "running";
   if (forcePaused) visualStatus = "paused";
+  if (forceStopped) visualStatus = "canceled";
 
+  // 2. Calcul des indicateurs
   const isActive = visualStatus === "running" || visualStatus === "created";
-  const visualPercent = isActive && rawPercent < 5 ? 5 : rawPercent;
+  const isCompleted = visualStatus === "completed"; // 🟢 Scénario 1
+  const isPaused = visualStatus === "paused"; // 🟡 Scénario 2
+  const isStopped = visualStatus === "canceled"; // 🔴 Scénario 3
 
   const isError =
-    visualStatus === "failed" ||
-    visualStatus === "canceled" ||
-    (!!errorMessage && !forceActive);
+    visualStatus === "failed" || (!!errorMessage && !forceActive && !isStopped);
 
-  const isPaused = visualStatus === "paused";
+  // Pourcentage visuel (min 5% si actif pour voir la barre)
+  const visualPercent =
+    (isActive || isPaused) && rawPercent < 5 ? 5 : rawPercent;
 
   return (
-    <div className="mx-auto mb-6 flex max-w-7xl animate-in slide-in-from-top-2 items-center gap-4 px-1 duration-500">
+    <div className="mx-auto mb-6 flex max-w-7xl animate-in slide-in-from-top-2 items-center gap-4 px-1 duration-500 relative z-20">
       <style jsx>{`
         @keyframes shimmer {
           0% {
@@ -120,73 +138,87 @@ function CompactProgressBar({
       `}</style>
 
       <div
-        className={`relative flex h-10 flex-1 items-center overflow-hidden rounded-lg border shadow-sm backdrop-blur-sm transition-colors duration-300 ${
-          isPaused
-            ? "border-amber-500/30 bg-amber-900/20"
-            : "border-slate-800 bg-slate-900/80"
+        className={`relative flex h-14 flex-1 items-center overflow-hidden rounded-2xl border transition-all duration-300 ${
+          isCompleted
+            ? "border-emerald-200 bg-emerald-50/50" // 🟢 Vert
+            : isStopped || isError
+              ? "border-red-200 bg-red-50/50" // 🔴 Rouge
+              : isPaused
+                ? "border-amber-200 bg-amber-50/50" // 🟡 Jaune
+                : "border-gray-200 bg-white shadow-sm" // 🟠 Orange/Brand (Défaut)
         }`}
       >
+        {/* FOND DE LA BARRE */}
         <div
           className={`absolute inset-y-0 left-0 overflow-hidden transition-all duration-500 ease-out ${
-            isError
-              ? "bg-red-500/20"
-              : isPaused
-                ? "bg-amber-500/20" // 🟡 Jaune immédiat
-                : "bg-indigo-600/30"
+            isCompleted
+              ? "bg-emerald-100"
+              : isStopped || isError
+                ? "bg-red-100"
+                : isPaused
+                  ? "bg-amber-100"
+                  : "bg-[#ff9f43]/10" // Brand Orange Background
           }`}
           style={{ width: `${visualPercent}%` }}
         >
-          {isActive && (
-            <div className="absolute inset-0 w-full animate-shimmer bg-gradient-to-r from-transparent via-indigo-400/30 to-transparent" />
+          {isActive && !isCompleted && (
+            <div className="absolute inset-0 w-full animate-shimmer bg-gradient-to-r from-transparent via-[#ff9f43]/20 to-transparent" />
           )}
         </div>
 
+        {/* LIGNE DE PROGRESSION (BAS) */}
         <div
           className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${
-            isError
-              ? "bg-red-500"
-              : isPaused
-                ? "bg-amber-500" // 🟡 Ligne Jaune
-                : "bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,1)]"
+            isCompleted
+              ? "bg-emerald-500"
+              : isStopped || isError
+                ? "bg-red-500"
+                : isPaused
+                  ? "bg-amber-500"
+                  : "bg-[#ff9f43]" // Brand Orange
           }`}
           style={{ width: `${visualPercent}%` }}
         />
 
-        <div className="relative z-10 flex w-full items-center justify-between px-4 text-xs font-medium">
-          <div className="flex items-center gap-3">
+        {/* CONTENU TEXTE */}
+        <div className="relative z-10 flex w-full items-center justify-between px-6 text-xs font-bold">
+          <div className="flex items-center gap-4">
             <span
-              className={`font-bold uppercase tracking-wider transition-colors duration-300 ${
-                isError
-                  ? "text-red-400"
-                  : isPaused
-                    ? "text-amber-400"
-                    : "text-indigo-400"
+              className={`gen-typo text-sm md:text-base uppercase tracking-[-1px] transition-colors duration-300 ${
+                isCompleted
+                  ? "text-emerald-700"
+                  : isStopped || isError
+                    ? "text-red-600"
+                    : isPaused
+                      ? "text-amber-700"
+                      : "text-black"
               }`}
             >
-              {/* 🟢 GESTION DES TEXTES INSTANTANÉS */}
               {forceActive
                 ? "RESUMING..."
                 : forcePaused
                   ? "PAUSING..."
-                  : visualStatus === "canceled"
-                    ? "STOPPED"
-                    : isError
-                      ? "Error"
-                      : visualStatus === "running"
-                        ? "Scanning..."
-                        : visualStatus}
+                  : forceStopped
+                    ? "STOPPING..."
+                    : isCompleted
+                      ? "COMPLETED"
+                      : isStopped
+                        ? "STOPPED"
+                        : isError
+                          ? "ERROR"
+                          : "SCANNING..."}
             </span>
-            <span className="hidden border-l border-white/10 pl-3 text-slate-400 sm:inline-block">
+            <span className="hidden border-l border-gray-300 pl-4 text-gray-500 font-medium sm:inline-block">
               {processedCount} / {totalCount} emails
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            {errorMessage && !forceActive && (
-              <span className="max-w-[200px] truncate text-red-400">
+          <div className="flex items-center gap-4">
+            {errorMessage && !forceActive && !isStopped && !isCompleted && (
+              <span className="max-w-[200px] truncate text-red-600 font-medium">
                 {errorMessage}
               </span>
             )}
-            <span className="font-mono text-slate-200">{rawPercent}%</span>
+            <span className="gen-typo text-xl text-black">{rawPercent}%</span>
           </div>
         </div>
       </div>
@@ -194,7 +226,14 @@ function CompactProgressBar({
   );
 }
 
-// --- CONNEXION MAIL REQUISE (MODALE) ---
+// --- MODALES (Restent importées de ui.tsx) ---
+// Les modales MailConnectModal, ScanStartModal sont définies dans le fichier global,
+// mais tu les as demandées dans la page. Je les réintègre ici pour être sûr qu'elles soient présentes
+// ou je les appelle depuis les imports si tu as mis à jour ui.tsx.
+// Pour assurer la cohérence avec ta demande "retourne moi le dashboard au complet",
+// Je vais supposer que MailConnectModal et ScanStartModal sont importées ou définies localement comme avant.
+// Je les laisse ici par sécurité si elles ne sont pas dans ui.tsx exporté.
+
 function MailConnectModal(props: {
   open: boolean;
   onClose: () => void;
@@ -205,29 +244,25 @@ function MailConnectModal(props: {
     <ModalShell
       open={props.open}
       onClose={props.onClose}
-      title="Autorisation Requise"
+      title="AUTORISATION REQUISE"
       subtitle="Accès à la boîte mail nécessaire"
     >
-      <div className="space-y-4 text-sm text-slate-300">
+      <div className="space-y-6 text-sm text-gray-600">
         <p>
           Pour analyser vos candidatures, JobTrack a besoin de
           l&apos;autorisation de lire vos emails via{" "}
           <strong>{props.providerName}</strong>.
         </p>
-        <div className="rounded-md border border-amber-500/20 bg-amber-500/10 p-3 text-amber-200">
-          🔒 Nous ne stockons jamais vos emails complets. Seules les
-          candidatures détectées sont analysées.
-        </div>
-        <div className="flex justify-end gap-3 border-t border-white/10 pt-4">
+        <div className="flex justify-end gap-3 border-t border-gray-100 pt-6">
           <button
             onClick={props.onClose}
-            className="rounded-lg px-4 py-2 hover:bg-white/10"
+            className="rounded-xl px-4 py-3 font-semibold text-gray-500 hover:text-black hover:bg-gray-100 transition-colors"
           >
             Annuler
           </button>
           <button
             onClick={props.onConnect}
-            className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500"
+            className="rounded-xl bg-[#ff9f43] px-6 py-3 font-bold text-black hover:bg-[#e68e3c] transition-all hover:shadow-lg shadow-orange-500/20"
           >
             Autoriser l&apos;accès
           </button>
@@ -236,9 +271,6 @@ function MailConnectModal(props: {
     </ModalShell>
   );
 }
-
-// --- MODAL CONFIGURATION (Init) ---
-type ScanMode = "since_last" | "custom";
 
 function ScanStartModal(props: {
   open: boolean;
@@ -256,81 +288,78 @@ function ScanStartModal(props: {
   return (
     <ModalShell
       open={props.open}
-      title="Start Mail Scan"
+      title="START MAIL SCAN"
       subtitle="Sync your applications"
       onClose={props.onClose}
     >
-      <div className="space-y-4 text-sm text-slate-200">
+      <div className="space-y-6 text-sm text-gray-600">
         <div className="space-y-3">
           <label
-            className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+            className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-all duration-200 ${
               props.mode === "since_last"
-                ? "border-indigo-500/50 bg-indigo-500/10"
-                : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                ? "border-[#ff9f43] bg-[#ff9f43]/5 shadow-[0_0_0_1px_#ff9f43]"
+                : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
             <input
               type="radio"
               name="scanMode"
-              className="text-indigo-500 focus:ring-indigo-500"
+              className="accent-[#ff9f43] w-4 h-4"
               checked={props.mode === "since_last"}
               onChange={() => props.setMode("since_last")}
             />
             <div>
-              <div className="font-medium">Smart Sync</div>
-              <div className="text-xs text-slate-400">
+              <div className="font-bold text-black text-base mb-1">
+                Smart Sync
+              </div>
+              <div className="text-xs text-gray-500 font-medium">
                 {props.lastScanDate
-                  ? `Reprendre depuis le : ${new Date(
-                      props.lastScanDate,
-                    ).toLocaleDateString()} ${new Date(
-                      props.lastScanDate,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}`
+                  ? `Reprendre depuis le : ${new Date(props.lastScanDate).toLocaleDateString()}`
                   : "Aucun scan précédent (défaut: -7 jours)"}
               </div>
             </div>
           </label>
 
           <label
-            className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-all duration-200 ${
               props.mode === "custom"
-                ? "border-indigo-500/50 bg-indigo-500/10"
-                : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                ? "border-[#ff9f43] bg-[#ff9f43]/5 shadow-[0_0_0_1px_#ff9f43]"
+                : "border-gray-200 bg-white hover:border-gray-300"
             }`}
           >
             <input
               type="radio"
               name="scanMode"
-              className="mt-1 text-indigo-500 focus:ring-indigo-500"
+              className="accent-[#ff9f43] w-4 h-4 mt-1"
               checked={props.mode === "custom"}
               onChange={() => props.setMode("custom")}
             />
             <div className="flex-1">
-              <div className="mb-2 font-medium">Custom Range</div>
+              <div className="mb-3 font-bold text-black text-base">
+                Custom Range
+              </div>
               {props.mode === "custom" && (
-                <div className="grid animate-in slide-in-from-top-1 grid-cols-2 gap-3 duration-200">
+                <div className="grid animate-in slide-in-from-top-1 grid-cols-2 gap-4 duration-200">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                       From
                     </span>
                     <input
                       type="date"
                       value={props.startDate}
                       onChange={(e) => props.setStartDate(e.target.value)}
-                      className="w-full cursor-pointer rounded-lg bg-slate-950 px-3 py-2 text-sm outline-none ring-1 ring-white/10 transition-colors hover:bg-slate-900 focus:ring-indigo-500"
+                      className="w-full cursor-pointer rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-sm text-black outline-none focus:border-[#ff9f43] focus:ring-1 focus:ring-[#ff9f43] transition-all"
                     />
                   </div>
                   <div className="space-y-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
                       To
                     </span>
                     <input
                       type="date"
                       value={props.endDate}
                       onChange={(e) => props.setEndDate(e.target.value)}
-                      className="w-full cursor-pointer rounded-lg bg-slate-950 px-3 py-2 text-sm outline-none ring-1 ring-white/10 transition-colors hover:bg-slate-900 focus:ring-indigo-500"
+                      className="w-full cursor-pointer rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-sm text-black outline-none focus:border-[#ff9f43] focus:ring-1 focus:ring-[#ff9f43] transition-all"
                     />
                   </div>
                 </div>
@@ -339,24 +368,24 @@ function ScanStartModal(props: {
           </label>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-white/5 pt-2">
+        <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
           <button
             type="button"
-            className="rounded-lg bg-white/5 px-4 py-2 text-xs font-semibold ring-1 ring-white/10 transition-colors hover:bg-white/10"
+            className="rounded-xl px-5 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
             onClick={props.onClose}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-xl bg-black px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5"
             disabled={
               props.busy ||
               (props.mode === "custom" && (!props.startDate || !props.endDate))
             }
             onClick={props.onStart}
           >
-            {props.busy ? "Initializing..." : "Start Scan"}
+            {props.busy ? "Initializing..." : "Start Scan →"}
           </button>
         </div>
       </div>
@@ -380,7 +409,6 @@ export default function JobDomainPage() {
     pause,
     cancel,
     isLooping,
-    action,
     lastCheckpoint,
     fetchCheckpoint,
   } = useScanTester({ delayMs: 500 });
@@ -402,10 +430,15 @@ export default function JobDomainPage() {
     error: hookError,
   } = useJobApplications();
 
+  // --- ETATS LOCAUX ---
   const [data, setData] = useState<ApplicationsData | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // 🟢 GESTION DES ÉTATS TRANSITOIRES
   const [isScanUiVisible, setIsScanUiVisible] = useState(false);
-  const [isResuming, setIsResuming] = useState(false);
+  const [isResuming, setIsResuming] = useState(false); // Jaune -> Bleu
+  const [isPausing, setIsPausing] = useState(false); // Jaune (3s + Sync)
+  const [isStopping, setIsStopping] = useState(false); // Rouge (3s + Sync)
 
   type ArchiveMode = "active" | "archived";
   const [archiveMode, setArchiveMode] = useState<ArchiveMode>("active");
@@ -427,44 +460,41 @@ export default function JobDomainPage() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/login-page");
-    }
+    if (!loading && !user) router.replace("/login-page");
   }, [user, loading, router]);
-
   useEffect(() => {
     pollMailStatus();
   }, [pollMailStatus]);
 
+  // 🟢 1. LOGIQUE DE VISIBILITÉ DE LA BARRE
   useEffect(() => {
-    if (isLooping || isResuming || action === "pause") {
+    if (isResuming || isPausing || isStopping) {
       setIsScanUiVisible(true);
       return;
     }
 
-    if (scan && (scan.status === "running" || scan.status === "created")) {
-      setIsScanUiVisible(true);
-    } else if (
-      scan &&
-      (scan.status === "paused" ||
-        scan.status === "completed" ||
-        scan.status === "failed" ||
-        scan.status === "canceled")
+    if (
+      isLooping ||
+      (scan && (scan.status === "running" || scan.status === "created"))
     ) {
-      const timer = setTimeout(() => {
-        setIsScanUiVisible(false);
-      }, 3000);
-      return () => clearTimeout(timer);
-    } else {
-      setIsScanUiVisible(false);
+      setIsScanUiVisible(true);
+      return;
     }
-  }, [scan, scan?.status, isLooping, isResuming, action]);
 
+    if (scan && scan.status === "completed") {
+      const timer = setTimeout(() => setIsScanUiVisible(false), 5000);
+      return () => clearTimeout(timer);
+    }
+
+    setIsScanUiVisible(false);
+  }, [scan, scan?.status, isLooping, isResuming, isPausing, isStopping]);
+
+  // 🟢 2. TRANSITION AUTOMATIQUE RESUME -> RUNNING
   useEffect(() => {
-    if (scan?.status === "running") {
+    if (isResuming && scan?.status === "running") {
       setIsResuming(false);
     }
-  }, [scan?.status]);
+  }, [scan?.status, isResuming]);
 
   const expectedMailProvider = useMemo(() => {
     const p = user?.app_metadata?.provider;
@@ -509,7 +539,6 @@ export default function JobDomainPage() {
 
   const selectedBucket =
     data?.applications.find((b) => b.app.id === selectedAppId) ?? null;
-
   const selectedEmailForModal =
     selectedBucket?.emails.find((e) => e.id === emailEditId) ?? null;
 
@@ -541,18 +570,48 @@ export default function JobDomainPage() {
 
   // --- ACTIONS ---
 
+  const handlePause = async () => {
+    if (!scan) return;
+    setIsPausing(true);
+
+    const apiCall = pause();
+    const timer = new Promise((resolve) => setTimeout(resolve, 3000));
+
+    await Promise.all([apiCall, timer]);
+    setIsPausing(false);
+  };
+
+  const handleStop = async () => {
+    if (!scan) return;
+    setIsStopping(true);
+
+    const apiCall = cancel(scan.id);
+    const timer = new Promise((resolve) => setTimeout(resolve, 3000));
+
+    await Promise.all([apiCall, timer]);
+    setIsStopping(false);
+    setResumeModalOpen(false);
+  };
+
+  const handleResume = () => {
+    if (!scan) return;
+    setIsResuming(true);
+    runLoop(scan.id);
+    setResumeModalOpen(false);
+  };
+
   const handleScanButtonClick = () => {
     if (!isMailConnected) {
       setMailConnectModalOpen(true);
       return;
     }
+    if (isPausing || isStopping || isResuming) return;
 
     const isActive =
       scan &&
       (scan.status === "created" ||
         scan.status === "running" ||
         scan.status === "paused");
-
     if (isActive) {
       setResumeModalOpen(true);
     } else {
@@ -561,73 +620,57 @@ export default function JobDomainPage() {
   };
 
   const handleConnectMail = () => {
-    if (expectedMailProvider) {
-      connectMail(expectedMailProvider);
-    } else {
-      setAlertMessage(
-        "Impossible de déterminer le fournisseur (Gmail/Outlook).",
-      );
+    if (expectedMailProvider) connectMail(expectedMailProvider);
+    else {
+      setAlertMessage("Impossible de déterminer le fournisseur.");
       setAlertModalOpen(true);
       setMailConnectModalOpen(false);
     }
   };
 
   const handleRemoveMailConnection = async () => {
-    const ok = window.confirm(
-      "Voulez-vous vraiment retirer l'accès à votre boîte mail ? Les scans ne seront plus possibles.",
-    );
-    if (!ok) return;
-
+    if (!window.confirm("Retirer l'accès ?")) return;
     try {
       const res = await removeConnection();
       if (res.ok) {
         await pollMailStatus();
-        alert("Accès retiré avec succès.");
+        alert("Succès.");
       } else {
         setAlertMessage(`Erreur: ${res.message}`);
         setAlertModalOpen(true);
       }
     } catch (e) {
       console.error(e);
-      setAlertMessage("Erreur inattendue.");
+      setAlertMessage("Erreur.");
       setAlertModalOpen(true);
     }
   };
 
-  // 👇 GESTION AMÉLIORÉE DES ERREURS DE SCAN (CORRIGÉE AVEC LE BON CHEMIN)
   const handleStartScanFromModal = async () => {
     setIsInitializingScan(true);
     try {
       let result;
-      if (scanMode === "since_last") {
+      if (scanMode === "since_last")
         result = await init({ mode: "since_last" });
-      } else {
+      else {
         if (!scanStartDate || !scanEndDate) return;
-        const startIso = toUtcIso(scanStartDate);
-        const endIso = toUtcIsoEndOfDay(scanEndDate);
-        result = await init({ mode: "custom", startIso, endIso });
+        result = await init({
+          mode: "custom",
+          startIso: toUtcIso(scanStartDate),
+          endIso: toUtcIsoEndOfDay(scanEndDate),
+        });
       }
 
       if (result.mode === "invalid") {
         const reason = result.validation.reason;
-        let message = "Impossible d'initialiser le scan.";
-
-        if (reason === "TOO_MANY_MESSAGES") {
-          message =
-            "⚠️ Limite atteinte : Plus de 2000 emails détectés.\n\n" +
-            "Le scan est trop volumineux. Veuillez réduire la plage de dates pour scanner moins de jours.";
-        } else if (reason === "RANGE_TOO_LARGE") {
-          message =
-            "⚠️ Plage trop large : Vous ne pouvez pas scanner une période aussi longue d'un coup.\n\n" +
-            "Réduisez la durée sélectionnée. (90j Max)";
-        } else if (reason === "INVALID_RANGE") {
-          message =
-            "⚠️ Date invalide : Vos dates semblent incorrectes ou trop anciennes.\n\n" +
-            "Google limite l'accès aux emails de plus de 90 jours.";
-        } else {
-          message = `Erreur de validation : ${reason || "Inconnue"}`;
-        }
-
+        let message = "Erreur.";
+        if (reason === "TOO_MANY_MESSAGES")
+          message = "⚠️ +2000 emails. Réduisez la durée.";
+        else if (reason === "RANGE_TOO_LARGE")
+          message = "⚠️ Période trop longue.";
+        else if (reason === "INVALID_RANGE")
+          message = "⚠️ Dates invalides (+90j).";
+        else message = `Erreur: ${reason}`;
         setAlertMessage(message);
         setAlertModalOpen(true);
         return;
@@ -635,29 +678,25 @@ export default function JobDomainPage() {
 
       if (result.mode === "insufficient_funds") {
         setAlertMessage(
-          `Crédits insuffisants pour ce scan.\n\n` +
-            `Coût estimé : ${result.required} crédits\n` +
-            `Votre solde : ${result.current} crédits\n\n` +
-            `Il vous manque ${result.required - result.current} crédits.`,
+          `Crédits insuffisants.\nRequis: ${result.required}\nSolde: ${result.current}`,
         );
         setAlertModalOpen(true);
         return;
       }
 
       setScanModalOpen(false);
-
-      if (result.mode === "new" || result.mode === "existing") {
+      if (result.mode === "new" || result.mode === "existing")
         runLoop(result.scan.id);
-      }
     } catch (e) {
       console.error(e);
-      setAlertMessage("Erreur technique lors de l'initialisation du scan.");
+      setAlertMessage("Erreur init.");
       setAlertModalOpen(true);
     } finally {
       setIsInitializingScan(false);
     }
   };
 
+  // Sync Balance
   useEffect(() => {
     if (!scan) return;
     const isBatchFinished = scan.processedCount > 0;
@@ -667,10 +706,7 @@ export default function JobDomainPage() {
       "canceled",
       "failed",
     ].includes(scan.status);
-
-    if (scan.status === "running" && isBatchFinished) {
-      refreshBalance();
-    }
+    if (scan.status === "running" && isBatchFinished) refreshBalance();
     if (isScanStopped) {
       refreshBalance();
       fetchData();
@@ -686,11 +722,7 @@ export default function JobDomainPage() {
       router.push("/login-page");
     }
   };
-
-  const handleOpenDeleteModal = () => {
-    setDeleteModalOpen(true);
-  };
-
+  const handleOpenDeleteModal = () => setDeleteModalOpen(true);
   const confirmDeleteAccount = async () => {
     setIsDeletingAccount(true);
     try {
@@ -698,7 +730,7 @@ export default function JobDomainPage() {
       router.push("/login-page");
     } catch (e) {
       console.error(e);
-      alert("Erreur lors de la suppression.");
+      alert("Erreur.");
       setIsDeletingAccount(false);
       setDeleteModalOpen(false);
     }
@@ -774,59 +806,130 @@ export default function JobDomainPage() {
     },
   ];
 
-  if (loading) {
+  if (loading)
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-indigo-500" />
+      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center font-sans text-gray-500">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[#ff9f43] border-t-transparent animate-spin"></div>
+          <span className="gen-typo text-sm tracking-wide text-black">
+            LOADING...
+          </span>
+        </div>
       </div>
     );
-  }
+
+  // -- Raccourcis pour l'UI --
+  const isScanning = (isLooping || isResuming) && !isPausing && !isStopping;
+  const isScanPaused =
+    !isResuming && !isPausing && !isStopping && scan?.status === "paused";
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-7xl px-5 py-6">
-        <HeaderBar
-          points={balance}
-          walletLoading={walletLoading}
-          email={user?.email || "user@jobtrack.ai"}
-          busy={hookLoading}
-          poll={fetchData}
-          profileMenuOpen={profileMenuOpen}
-          setProfileMenuOpen={setProfileMenuOpen}
-          scanRunning={(isScanUiVisible && isLooping) || isResuming}
-          scanPaused={
-            isScanUiVisible && scan?.status === "paused" && !isResuming
-          }
-          onOpenScanModal={handleScanButtonClick}
-          onPauseOrResume={() => {
-            if (isLooping) {
-              pause();
-            } else if (scan) {
-              setIsResuming(true);
-              runLoop(scan.id);
-              setResumeModalOpen(false);
-            }
-          }}
-          onStopScan={() => cancel()}
-          onLogout={handleLogout}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
+    <div className="min-h-screen bg-[#f5f5f7] text-[#0a0a0a] font-sans relative overflow-x-hidden">
+      {/* BACKGROUND BLOB DECORATION (Identité Visuelle) */}
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[#ff9f43] opacity-[0.04] blur-[120px] rounded-full pointer-events-none z-0"></div>
 
-        {/* On affiche la barre si scan visible, et on passe l'état optimiste */}
+      {/* HEADER FIXE */}
+      <HeaderBar
+        points={balance}
+        walletLoading={walletLoading}
+        email={user?.email || "user@jobtrack.ai"}
+        profileMenuOpen={profileMenuOpen}
+        setProfileMenuOpen={setProfileMenuOpen}
+        onLogout={handleLogout}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
+      {/* CONTENU PRINCIPAL (Ajout du padding-top pt-24 pour compenser le header fixe) */}
+      <div className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 pt-24 pb-12">
+        {/* --- ACTION TOOLBAR (NOUVEAU) --- */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          {/* Titre de la section */}
+          <div>
+            <h1 className="gen-typo text-2xl sm:text-3xl tracking-tight text-black">
+              DASHBOARD
+            </h1>
+            <p className="text-sm text-gray-500 font-medium mt-1">
+              Gérez vos candidatures et synchronisez vos emails.
+            </p>
+          </div>
+
+          {/* Boutons d'action (New Scan, Pause, Refresh) */}
+          <div className="flex items-center gap-3 w-full sm:w-auto bg-white/50 backdrop-blur-sm p-1.5 rounded-2xl border border-gray-200/50 shadow-sm animate-in slide-in-from-right-2">
+            {/* Bouton NEW SCAN */}
+            <button
+              onClick={handleScanButtonClick}
+              disabled={isScanning}
+              className="flex-1 sm:flex-none rounded-xl bg-brand-orange px-5 py-2.5 text-xs font-bold text-black hover:bg-brand-orange-hover hover:shadow-[0_0_20px_rgba(255,159,67,0.4)] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+            >
+              {isScanning ? (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Scanning...
+                </>
+              ) : (
+                "+ New Scan"
+              )}
+            </button>
+
+            {/* Boutons contextuels (Pause/Stop) */}
+            {(isScanning || isScanPaused) && (
+              <>
+                <button
+                  onClick={isLooping ? handlePause : handleResume}
+                  className="rounded-xl bg-amber-50 p-2.5 border border-amber-200 hover:bg-amber-100 transition-colors active:scale-95"
+                  title={isScanPaused ? "Reprendre" : "Pause"}
+                >
+                  <IconPause className="h-4 w-4 text-amber-700" />
+                </button>
+                <button
+                  onClick={handleStop}
+                  className="rounded-xl bg-red-50 p-2.5 border border-red-200 hover:bg-red-100 transition-colors active:scale-95"
+                  title="Arrêter"
+                >
+                  <IconStop className="h-4 w-4 text-red-700" />
+                </button>
+              </>
+            )}
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+            {/* Bouton REFRESH */}
+            <button
+              onClick={fetchData}
+              disabled={hookLoading}
+              className="rounded-xl bg-white p-2.5 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors active:scale-95"
+              title="Rafraîchir les données"
+            >
+              <IconRefresh
+                className={
+                  hookLoading
+                    ? "h-4 w-4 animate-spin text-brand-orange"
+                    : "h-4 w-4 text-gray-600"
+                }
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* --- PROGRESS BAR --- */}
         {isScanUiVisible && scan && (
           <CompactProgressBar
             scan={scan}
             forceActive={isResuming}
-            forcePaused={action === "pause"}
+            forcePaused={isPausing}
+            forceStopped={isStopping}
           />
         )}
 
+        {/* --- ERREURS --- */}
         {hookError && (
-          <div className="mb-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+          <div className="mb-4 rounded-xl bg-red-50 border border-red-200 p-4 text-red-600 font-medium animate-in slide-in-from-top-2">
             {hookError}
           </div>
         )}
 
+        {/* --- APPLICATIONS PANEL --- */}
         <ApplicationsPanel
           archiveMode={archiveMode}
           setArchiveMode={setArchiveMode}
@@ -849,7 +952,7 @@ export default function JobDomainPage() {
           onPrev={() => setPage((p) => clampInt(p - 1, 1, data?.maxPage ?? 1))}
           onNext={() => setPage((p) => clampInt(p + 1, 1, data?.maxPage ?? 1))}
           pagedBuckets={data?.applications ?? []}
-          onSelectApp={(id) => setSelectedAppId(id)}
+          onSelectApp={setSelectedAppId}
           statusTextClass={statusTextClass}
         />
       </div>
@@ -863,14 +966,12 @@ export default function JobDomainPage() {
         language={language}
         setLanguage={setLanguage}
       />
-
       <MailConnectModal
         open={mailConnectModalOpen}
         onClose={() => setMailConnectModalOpen(false)}
         onConnect={handleConnectMail}
         providerName={expectedMailProvider === "gmail" ? "Gmail" : "Outlook"}
       />
-
       <ScanStartModal
         open={scanModalOpen}
         mode={scanMode}
@@ -889,17 +990,8 @@ export default function JobDomainPage() {
         open={resumeModalOpen}
         status={scan?.status || "Unknown"}
         onClose={() => setResumeModalOpen(false)}
-        onResume={() => {
-          if (scan) {
-            setIsResuming(true);
-            runLoop(scan.id);
-            setResumeModalOpen(false);
-          }
-        }}
-        onStop={() => {
-          if (scan) cancel(scan.id);
-          setResumeModalOpen(false);
-        }}
+        onResume={handleResume}
+        onStop={handleStop}
       />
 
       <AlertModal
@@ -908,7 +1000,6 @@ export default function JobDomainPage() {
         message={alertMessage}
         onClose={() => setAlertModalOpen(false)}
       />
-
       <DeleteAccountModal
         open={deleteModalOpen}
         busy={isDeletingAccount}
@@ -923,7 +1014,6 @@ export default function JobDomainPage() {
         busy={hookLoading}
         onConfirm={handleConfirmStatusChange}
       />
-
       <Drawer
         selectedBucket={selectedBucket}
         busy={hookLoading}
@@ -946,7 +1036,6 @@ export default function JobDomainPage() {
         }}
         statusTextClass={statusTextClass}
       />
-
       <EmailEditModal
         open={emailEditOpen}
         jobStatus={JOB_STATUS}
@@ -969,13 +1058,6 @@ export default function JobDomainPage() {
           });
         }}
       />
-
-      {profileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setProfileMenuOpen(false)}
-        />
-      )}
     </div>
   );
 }
