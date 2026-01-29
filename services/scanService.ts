@@ -8,7 +8,7 @@ export interface MailReaderApi {
   getRawMailById(
     userId: string,
     provider: MailProvider,
-    messageId: string
+    messageId: string,
   ): Promise<RawMail>;
 }
 
@@ -115,7 +115,7 @@ export interface ScanRepository {
 
       // 🟢 NOUVEAU : Permettre la mise à jour du coût
       tokensCost: number;
-    }>
+    }>,
   ): Promise<Scan>;
 
   finalize(
@@ -124,7 +124,7 @@ export interface ScanRepository {
     input: {
       finalStatus: "completed" | "canceled" | "failed";
       errorMessage?: string;
-    }
+    },
   ): Promise<Scan>;
 }
 
@@ -139,7 +139,7 @@ export interface MailCheckpointRepository {
   upsertLastSuccessAt(
     userId: string,
     provider: MailProvider,
-    lastSuccessAt: string
+    lastSuccessAt: string,
   ): Promise<void>;
 }
 
@@ -147,7 +147,7 @@ export interface MailProviderApi {
   validateRange(
     startIso: string,
     endIso: string,
-    rules: ScanRangeRules
+    rules: ScanRangeRules,
   ): Promise<ValidateRangeResult>;
 
   getAllMessageIdsInRange(input: {
@@ -181,7 +181,7 @@ function minIso(aIso: string, bIso: string): string {
 function daysBetweenCeil(startIso: string, endIso: string): number {
   const s = new Date(startIso).getTime();
   const e = new Date(endIso).getTime();
-  return Math.ceil((e - s) / (24 * 3600 * 1000));
+  return Math.ceil((e - s) / (8 * 3600 * 1000));
 }
 
 function normalizeIsoRange(startIso: string, endIso: string) {
@@ -216,9 +216,9 @@ export class ScanService {
 
     opts?: {
       rules?: ScanRangeRules; // default {90,2000}
-      batchHours?: number; // default 24
+      batchHours?: number; // default 8h
       sinceLastFallbackDays?: number; // default 7
-    }
+    },
   ) {
     this.rules = opts?.rules ?? { maxDays: 90, maxMessages: 2000 };
     this.batchHours = opts?.batchHours ?? 24;
@@ -231,7 +231,7 @@ export class ScanService {
   async init(
     userId: string,
     provider: MailProvider,
-    input: InitInput
+    input: InitInput,
   ): Promise<InitResult> {
     const active = await this.scans.findActiveScan(userId);
     if (active) return { mode: "existing", scan: active };
@@ -325,7 +325,7 @@ export class ScanService {
       await this.checkpoints.upsertLastSuccessAt(
         userId,
         running.provider,
-        running.rangeEndAt
+        running.rangeEndAt,
       );
       return { scan: finalized };
     }
@@ -334,7 +334,7 @@ export class ScanService {
     const windowStart = running.cursorAt;
     const windowEnd = minIso(
       addHoursIso(windowStart, this.batchHours),
-      running.rangeEndAt
+      running.rangeEndAt,
     );
 
     try {
@@ -375,7 +375,7 @@ export class ScanService {
           await this.checkpoints.upsertLastSuccessAt(
             userId,
             running.provider,
-            running.rangeEndAt
+            running.rangeEndAt,
           );
           return { scan: finalized };
         }
@@ -402,7 +402,7 @@ export class ScanService {
           const rawMail = await this.mailReader.getRawMailById(
             userId,
             running.provider,
-            id
+            id,
           );
           const analysis = await this.mailAnalysis.analyzeMail(rawMail);
           await this.jobIngestion.ingestAnalyzedMail({
@@ -485,7 +485,7 @@ export class ScanService {
       const attempted = succeeded + localFailed;
       const newProcessed = Math.min(
         running.totalCount,
-        Math.max(0, running.processedCount) + attempted
+        Math.max(0, running.processedCount) + attempted,
       );
       const shouldContinue = new Date(windowEnd) < new Date(running.rangeEndAt);
       const currentCost = running.tokensCost || 0;
@@ -511,7 +511,7 @@ export class ScanService {
         await this.checkpoints.upsertLastSuccessAt(
           userId,
           running.provider,
-          running.rangeEndAt
+          running.rangeEndAt,
         );
         return { scan: finalized };
       }
@@ -555,7 +555,7 @@ export class ScanService {
   private async resolveRange(
     userId: string,
     provider: MailProvider,
-    input: InitInput
+    input: InitInput,
   ): Promise<
     | { ok: true; startIso: string; endIso: string; totalCount: number }
     | { ok: false; validation: Exclude<ValidateRangeResult, { ok: true }> }
@@ -623,7 +623,7 @@ export class ScanService {
     const validation = await this.providerApi.validateRange(
       startRaw,
       endRaw,
-      this.rules
+      this.rules,
     );
     if (!validation.ok) {
       return { ok: false, validation };

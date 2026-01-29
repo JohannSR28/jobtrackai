@@ -1,3 +1,4 @@
+// app/api/stripe/checkout/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import Stripe from "stripe";
@@ -30,6 +31,11 @@ export async function POST(req: Request) {
         },
       ],
       mode: "payment", // Paiement unique
+
+      // --- AJOUT IMPORTANT POUR LES FACTURES ---
+      invoice_creation: {
+        enabled: true,
+      },
 
       // 4. MÉTADONNÉES CRUCIALES (Pour retrouver l'user après le paiement)
       metadata: {

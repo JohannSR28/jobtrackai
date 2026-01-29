@@ -23,9 +23,9 @@ const PRICING_PLANS = [
   },
   {
     credits: 2000,
-    price: 15,
-    // ID du tarif à 15$
-    stripePriceId: "price_1SuOfpHfMNgr7gopw9aEQwjK",
+    price: 12,
+    // ID du tarif à 12$
+    stripePriceId: "price_1Sv3oQHfMNgr7gopvphLGBKI",
     popular: false,
   },
 ];

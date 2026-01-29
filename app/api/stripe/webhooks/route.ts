@@ -1,3 +1,4 @@
+// app/api/stripe/webhooks/route.ts
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     const creditsString = session.metadata?.credits;
 
     console.log(
-      `💰 Webhook reçu : User ${userId} a acheté ${creditsString} crédits.`
+      `💰 Webhook reçu : User ${userId} a acheté ${creditsString} crédits.`,
     );
 
     if (userId && creditsString) {
