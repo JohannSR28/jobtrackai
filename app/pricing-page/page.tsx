@@ -11,28 +11,28 @@ const PRICING_PLANS = [
   {
     credits: 500,
     price: 5,
-    stripePriceId: "price_1SuOfpHfMNgr7gopmTHUrn1v",
+    stripePriceId: "price_1SvKPTHfMNgr7gopjhCxrGN2",
     popular: false,
   },
   {
     credits: 1000,
     price: 8,
-    stripePriceId: "price_1SuOfpHfMNgr7gopyiC8kpEK",
+    stripePriceId: "price_1SvKQPHfMNgr7gop4gptLPBw",
     popular: true,
   },
   {
     credits: 2000,
     price: 12,
-    stripePriceId: "price_1Sv3oQHfMNgr7gopvphLGBKI",
+    stripePriceId: "price_1SvKR7HfMNgr7gop5NaMZ8vQ",
     popular: false,
   },
 ];
 
 // --- DEBUT ZONE TEST (À SUPPRIMER PLUS TARD) ---
 const TEST_PLAN = {
-  credits: 1000,
+  credits: 500,
   price: 0.5, // 0.50$
-  stripePriceId: "price_1Sv3qEHfMNgr7gopNdh0SZik",
+  stripePriceId: "price_1SvKRlHfMNgr7gopx7hT9dmi",
 };
 // --- FIN ZONE TEST ---
 
