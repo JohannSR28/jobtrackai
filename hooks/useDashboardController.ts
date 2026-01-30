@@ -30,23 +30,22 @@ export type VisualState =
   | "stopping"
   | "resuming";
 
-// --- HELPERS DATE CORRIGÉS ---
-// ✅ Correction : On utilise Date.UTC pour construire la date directement en UTC.
-// Cela empêche le navigateur d'ajouter/retirer des heures à cause du fuseau horaire local,
-// ce qui évitera d'ajouter un jour fantôme à la plage de date.
+// --- HELPERS DATE (VERSION "STRING PURE" - ANTI-BUG TIMEZONE) ---
+// Cette méthode évite 100% des conversions implicites du navigateur.
+// On prend la chaîne "YYYY-MM-DD" et on colle le suffixe UTC.
+// C'est ce qu'il y a de plus fiable pour communiquer avec une API qui attend de l'ISO.
 
 function toUtcIso(dateStr: string) {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-").map(Number);
-  // Construit le 00:00:00 UTC strict pour ce jour
-  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0)).toISOString();
+  // Sécurité : si la date est vide, on renvoie maintenant en ISO
+  if (!dateStr) return new Date().toISOString();
+  // On force le format UTC strict sans passer par l'objet Date
+  return `${dateStr}T00:00:00.000Z`;
 }
 
 function toUtcIsoEndOfDay(dateStr: string) {
-  if (!dateStr) return "";
-  const [y, m, d] = dateStr.split("-").map(Number);
-  // Construit le 23:59:59.999 UTC strict pour ce jour
-  return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999)).toISOString();
+  if (!dateStr) return new Date().toISOString();
+  // On force la dernière milliseconde de la journée en UTC
+  return `${dateStr}T23:59:59.999Z`;
 }
 
 function getScanErrorMessage(reason?: string): string {

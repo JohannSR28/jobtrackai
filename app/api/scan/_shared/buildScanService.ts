@@ -39,7 +39,7 @@ type MailConnectionRow = { provider: MailProvider };
 
 async function getConnectedProvider(
   db: SupabaseClient,
-  userId: string
+  userId: string,
 ): Promise<MailProvider> {
   const { data, error } = await db
     .from("mail_connections")
@@ -58,7 +58,7 @@ async function getConnectedProvider(
 
 export async function buildScanService(
   db: SupabaseClient,
-  userId: string
+  userId: string,
 ): Promise<{
   scanService: ScanService;
   provider: MailProvider;
@@ -166,9 +166,9 @@ export async function buildScanService(
 
     {
       rules,
-      batchHours: 24,
+      batchHours: 8,
       sinceLastFallbackDays: 7,
-    }
+    },
   );
 
   // =========================

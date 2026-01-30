@@ -181,7 +181,7 @@ function minIso(aIso: string, bIso: string): string {
 function daysBetweenCeil(startIso: string, endIso: string): number {
   const s = new Date(startIso).getTime();
   const e = new Date(endIso).getTime();
-  return Math.ceil((e - s) / (8 * 3600 * 1000));
+  return Math.ceil((e - s) / (24 * 3600 * 1000));
 }
 
 function normalizeIsoRange(startIso: string, endIso: string) {
