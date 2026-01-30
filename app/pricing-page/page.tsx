@@ -28,13 +28,13 @@ const PRICING_PLANS = [
   },
 ];
 
-/*--- DEBUT ZONE TEST (À SUPPRIMER PLUS TARD) ---
+/*--- DEBUT ZONE TEST (À SUPPRIMER PLUS TARD) ---*/
 const TEST_PLAN = {
   credits: 500,
   price: 0.5, // 0.50$
   stripePriceId: "price_1SvKRlHfMNgr7gopx7hT9dmi",
 };
-/ --- FIN ZONE TEST --- */
+/* --- FIN ZONE TEST --- */
 
 const translations = {
   fr: {
@@ -115,7 +115,7 @@ export default function Pricing() {
   const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
 
   // --- STATE POUR LE TEST (À SUPPRIMER PLUS TARD) ---
-  // const [isTestLoading, setIsTestLoading] = useState(false);
+  const [isTestLoading, setIsTestLoading] = useState(false);
 
   const router = useRouter();
 
@@ -156,7 +156,7 @@ export default function Pricing() {
     }
   };
 
-  /* --- FONCTION D'ACHAT TEST (À SUPPRIMER PLUS TARD) ---
+  /* --- FONCTION D'ACHAT TEST (À SUPPRIMER PLUS TARD) ---*/
   const handleTestBuy = async () => {
     if (!user) {
       router.push(`/login?next=/pricing-page`);
@@ -190,7 +190,7 @@ export default function Pricing() {
       setIsTestLoading(false);
     }
   };
-  // --- FIN LOGIQUE TEST --- */
+  // --- FIN LOGIQUE TEST --- //
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col relative overflow-hidden">
@@ -329,7 +329,7 @@ export default function Pricing() {
           </div>
         </section>
 
-        {/* --- DEBUT SECTION TEST (À SUPPRIMER PLUS TARD) --- 
+        {/* --- DEBUT SECTION TEST (À SUPPRIMER PLUS TARD) --- */}
         <section className="max-w-[600px] mx-auto px-6 mb-16">
           <div className="bg-red-50 border-2 border-red-400 border-dashed rounded-xl p-6 text-center">
             <h3 className="font-bold text-red-600 text-lg uppercase tracking-wider mb-2">
