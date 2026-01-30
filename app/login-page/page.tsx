@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, Suspense } from "react"; // 1. Import Suspense
+import { useState, Suspense, useEffect } from "react"; // 1. Ajout de useEffect
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation"; // 2. Ajout de useRouter
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const translations = {
@@ -40,19 +40,27 @@ const translations = {
 
 const LANDING_URL = "https://jobtrackai-landing-page.vercel.app/";
 
-// 2. On renomme ton composant principal en "LoginContent"
-// C'est lui qui contient useSearchParams()
 function LoginContent() {
   const { language } = useLanguage();
   const t = translations[language];
+  const router = useRouter(); // Initialisation du router
 
   // Récupérer les paramètres de l'URL
   const searchParams = useSearchParams();
   const nextRedirect = searchParams.get("next") || "/dashboard";
 
-  const { signIn } = useAuth();
+  // 3. On récupère aussi 'user' et 'loading' depuis useAuth
+  const { signIn, user, loading } = useAuth();
+
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 4. EFFET DE REDIRECTION : Si on est déjà connecté, on part direct au dashboard
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace(nextRedirect);
+    }
+  }, [user, loading, router, nextRedirect]);
 
   const handleLogin = async (provider: "google" | "azure") => {
     setIsBusy(true);
@@ -65,6 +73,16 @@ function LoginContent() {
       setIsBusy(false);
     }
   };
+
+  // 5. PROTECTION VISUELLE : On affiche un spinner tant qu'on vérifie l'auth
+  // ou si on a détecté un user (pour éviter de voir le formulaire 0.5s avant la redirection)
+  if (loading || user) {
+    return (
+      <div className="min-h-screen w-full bg-white flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-brand-orange border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col relative overflow-hidden">
@@ -256,7 +274,6 @@ function LoginContent() {
 
 export default function Login() {
   return (
-    // Suspense gère le chargement pendant que Next.js récupère les params de l'URL
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <LoginContent />
     </Suspense>
