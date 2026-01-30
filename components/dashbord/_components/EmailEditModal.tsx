@@ -2,6 +2,34 @@
 
 import type { JobEmail, JobStatus } from "@/hooks/useJobApplications";
 import { ModalShell } from "./ui";
+import { useLanguage } from "@/hooks/useLanguage";
+
+const translations = {
+  fr: {
+    title: "ÉDITER L'EMAIL",
+    noEmailSelected: "Aucun email sélectionné.",
+    company: "Entreprise",
+    position: "Poste",
+    status: "Statut",
+    event: "Événement",
+    reset: "Réinitialiser",
+    saveChanges: "Enregistrer",
+    // Options de statut (si elles ne sont pas déjà traduites ailleurs ou si vous voulez un mapping spécifique)
+    // Note: Ici on affiche les valeurs brutes du type JobStatus dans le <select>,
+    // mais si vous voulez traduire les options affichées, il faudrait un mapping.
+    // Pour l'instant, je garde la logique actuelle qui map directement les valeurs de l'enum.
+  },
+  en: {
+    title: "EDIT EMAIL",
+    noEmailSelected: "No email selected.",
+    company: "Company",
+    position: "Position",
+    status: "Status",
+    event: "Event",
+    reset: "Reset",
+    saveChanges: "Save Changes",
+  },
+};
 
 export function EmailEditModal(props: {
   open: boolean;
@@ -28,6 +56,9 @@ export function EmailEditModal(props: {
   onSave: () => void;
   onReset: () => void;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   const inputClass =
     "w-full rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-medium text-black outline-none focus:border-brand-orange focus:ring-1 focus:ring-brand-orange transition-all placeholder:text-gray-300 shadow-sm";
   const labelClass =
@@ -36,18 +67,18 @@ export function EmailEditModal(props: {
   return (
     <ModalShell
       open={props.open}
-      title="EDIT EMAIL"
+      title={t.title}
       subtitle={props.selectedEmail?.subject ?? undefined}
       onClose={props.onClose}
     >
       {!props.selectedEmail || !props.emailEdit ? (
         <div className="text-sm text-gray-500 font-medium">
-          No email selected.
+          {t.noEmailSelected}
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className={labelClass}>Company</div>
+            <div className={labelClass}>{t.company}</div>
             <input
               className={inputClass}
               value={props.emailEdit.company}
@@ -61,7 +92,7 @@ export function EmailEditModal(props: {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={labelClass}>Position</div>
+            <div className={labelClass}>{t.position}</div>
             <input
               className={inputClass}
               value={props.emailEdit.position}
@@ -75,7 +106,7 @@ export function EmailEditModal(props: {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={labelClass}>Status</div>
+            <div className={labelClass}>{t.status}</div>
             <div className="relative w-full">
               <select
                 className={`${inputClass} appearance-none cursor-pointer`}
@@ -112,7 +143,7 @@ export function EmailEditModal(props: {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className={labelClass}>Event</div>
+            <div className={labelClass}>{t.event}</div>
             <input
               className={inputClass}
               value={props.emailEdit.eventType}
@@ -132,7 +163,7 @@ export function EmailEditModal(props: {
               disabled={props.busy}
               onClick={props.onReset}
             >
-              Reset
+              {t.reset}
             </button>
             <button
               type="button"
@@ -140,7 +171,7 @@ export function EmailEditModal(props: {
               disabled={props.busy}
               onClick={props.onSave}
             >
-              Save Changes
+              {t.saveChanges}
             </button>
           </div>
         </div>

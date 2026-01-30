@@ -5,30 +5,36 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const PRICING_PLANS = [
   {
     credits: 500,
     price: 5,
-    // ID du tarif à 5$
     stripePriceId: "price_1SuOfpHfMNgr7gopmTHUrn1v",
     popular: false,
   },
   {
     credits: 1000,
     price: 8,
-    // ID du tarif à 8$
     stripePriceId: "price_1SuOfpHfMNgr7gopyiC8kpEK",
     popular: true,
   },
   {
     credits: 2000,
     price: 12,
-    // ID du tarif à 12$
     stripePriceId: "price_1Sv3oQHfMNgr7gopvphLGBKI",
     popular: false,
   },
 ];
+
+// --- DEBUT ZONE TEST (À SUPPRIMER PLUS TARD) ---
+const TEST_PLAN = {
+  credits: 1000,
+  price: 0.5, // 0.50$
+  stripePriceId: "price_1Sv3qEHfMNgr7gopNdh0SZik",
+};
+// --- FIN ZONE TEST ---
 
 const translations = {
   fr: {
@@ -39,8 +45,8 @@ const translations = {
     credits: "crédits",
     popular: "Populaire",
     buyNow: "Acheter",
-    loginToBuy: "Se connecter pour acheter", // Nouveau texte
-    processing: "Redirection...", // Nouveau texte
+    loginToBuy: "Se connecter pour acheter",
+    processing: "Redirection...",
     features: [
       "Suivi illimité des candidatures",
       "Analyse IA des réponses",
@@ -102,36 +108,32 @@ export default function Pricing() {
   const { language } = useLanguage();
   const t = translations[language];
 
-  // Hook d'auth pour vérifier la connexion
   const { user } = useAuth();
 
   const [selectedPlan, setSelectedPlan] = useState<number>(1);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-
-  // État pour savoir quelle carte est en train de charger
   const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
+
+  // --- STATE POUR LE TEST (À SUPPRIMER PLUS TARD) ---
+  const [isTestLoading, setIsTestLoading] = useState(false);
 
   const router = useRouter();
 
-  //  LA FONCTION D'ACHAT
+  // LA FONCTION D'ACHAT NORMALE
   const handleBuy = async (planIndex: number) => {
     const plan = PRICING_PLANS[planIndex];
 
-    // 1. Si pas connecté -> Redirection vers login
     if (!user) {
       router.push(`/login?next=/pricing-page`);
       return;
     }
 
-    // 2. Si connecté -> On lance le paiement
     setLoadingIndex(planIndex);
 
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           priceId: plan.stripePriceId,
           credits: plan.credits,
@@ -141,7 +143,6 @@ export default function Pricing() {
       const data = await response.json();
 
       if (data.url) {
-        // 3. Redirection vers Stripe
         window.location.href = data.url;
       } else {
         console.error("Erreur Stripe:", data.error);
@@ -154,6 +155,42 @@ export default function Pricing() {
       setLoadingIndex(null);
     }
   };
+
+  // --- FONCTION D'ACHAT TEST (À SUPPRIMER PLUS TARD) ---
+  const handleTestBuy = async () => {
+    if (!user) {
+      router.push(`/login?next=/pricing-page`);
+      return;
+    }
+
+    setIsTestLoading(true);
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          priceId: TEST_PLAN.stripePriceId,
+          credits: TEST_PLAN.credits,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error("Erreur Stripe Test:", data.error);
+        alert("Erreur Test: " + (data.error || "Inconnue"));
+        setIsTestLoading(false);
+      }
+    } catch (error) {
+      console.error("Erreur fetch Test:", error);
+      alert("Erreur connexion serveur (Test).");
+      setIsTestLoading(false);
+    }
+  };
+  // --- FIN LOGIQUE TEST ---
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col relative overflow-hidden">
@@ -175,12 +212,17 @@ export default function Pricing() {
               JobTrackAI
             </span>
           </Link>
-          <button
-            onClick={() => router.back()}
-            className="text-sm font-semibold text-gray-600 hover:text-brand-orange transition-colors"
-          >
-            {t.goBack}
-          </button>
+
+          {/* GROUPE DROITE: SWITCHER + RETOUR */}
+          <div className="flex items-center gap-4">
+            <LanguageSwitcher />
+            <button
+              onClick={() => router.back()}
+              className="text-sm font-semibold text-gray-600 hover:text-brand-orange transition-colors"
+            >
+              {t.goBack}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -208,7 +250,6 @@ export default function Pricing() {
             {PRICING_PLANS.map((plan, index) => (
               <div
                 key={index}
-                // On garde la sélection visuelle
                 onClick={() => setSelectedPlan(index)}
                 onMouseEnter={() => setHoveredCard(index)}
                 onMouseLeave={() => setHoveredCard(null)}
@@ -263,13 +304,12 @@ export default function Pricing() {
                   </div>
                 </div>
 
-                {/* BOUTON D'ACTION */}
                 <button
                   onClick={(e) => {
-                    e.stopPropagation(); // Évite de déclencher le onClick de la div parente
+                    e.stopPropagation();
                     handleBuy(index);
                   }}
-                  disabled={loadingIndex !== null} // Désactive si un chargement est en cours
+                  disabled={loadingIndex !== null}
                   className={`w-full py-3 rounded-xl font-bold text-sm uppercase tracking-tight transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                     plan.popular
                       ? "bg-brand-orange text-black hover:bg-brand-orange-hover hover:shadow-[0_0_20px_rgba(255,159,67,0.4)] hover:scale-105"
@@ -278,7 +318,6 @@ export default function Pricing() {
                         : "bg-gray-100 text-gray-700 hover:bg-black hover:text-white"
                   }`}
                 >
-                  {/* Texte dynamique selon l'état */}
                   {loadingIndex === index
                     ? t.processing
                     : !user
@@ -289,6 +328,37 @@ export default function Pricing() {
             ))}
           </div>
         </section>
+
+        {/* --- DEBUT SECTION TEST (À SUPPRIMER PLUS TARD) --- */}
+        <section className="max-w-[600px] mx-auto px-6 mb-16">
+          <div className="bg-red-50 border-2 border-red-400 border-dashed rounded-xl p-6 text-center">
+            <h3 className="font-bold text-red-600 text-lg uppercase tracking-wider mb-2">
+              🛠️ Zone de Test (Paiement)
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Ce plan est invisible pour les utilisateurs normaux. Utilise-le
+              pour tester le flux de paiement sans dépenser une fortune.
+            </p>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <span className="font-bold text-2xl text-black">
+                {TEST_PLAN.credits} Crédits
+              </span>
+              <span className="text-xl text-gray-500">=</span>
+              <span className="font-bold text-2xl text-black">
+                ${TEST_PLAN.price.toFixed(2)} CAD
+              </span>
+            </div>
+
+            <button
+              onClick={handleTestBuy}
+              disabled={isTestLoading}
+              className="px-8 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isTestLoading ? "Redirection..." : "TESTER LE PAIEMENT (0.50$)"}
+            </button>
+          </div>
+        </section>
+        {/* --- FIN SECTION TEST --- */}
 
         {/* Features */}
         <section className="max-w-[900px] mx-auto px-6 mb-16">

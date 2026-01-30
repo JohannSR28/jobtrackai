@@ -2,18 +2,39 @@
 
 import { IconPause, IconRefresh, IconStop } from "./icons";
 import { type VisualState } from "@/hooks/useDashboardController";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type ActionToolbarProps = {
   onScanClick: () => void;
   onPause: () => void;
   onStop: () => void;
   onRefresh: () => void;
-  onResume: () => void; // (Gardé pour compatibilité de typage, même si géré par onScanClick)
-
+  onResume: () => void;
   isSystemBusy: boolean;
   visualState: VisualState;
   isScanPaused: boolean;
   loading: boolean;
+};
+
+const translations = {
+  fr: {
+    title: "TABLEAU DE BORD",
+    subtitle: "Gérez vos candidatures et synchronisez vos emails.",
+    resumeScan: "Reprendre le Scan",
+    newScan: "+ Nouveau Scan",
+    pauseTooltip: "Mettre en pause",
+    stopTooltip: "Arrêter le scan",
+    refreshTooltip: "Rafraîchir les données",
+  },
+  en: {
+    title: "DASHBOARD",
+    subtitle: "Manage your applications and synchronize your emails.",
+    resumeScan: "Resume Scan",
+    newScan: "+ New Scan",
+    pauseTooltip: "Pause",
+    stopTooltip: "Stop scan",
+    refreshTooltip: "Refresh data",
+  },
 };
 
 export function ActionToolbar({
@@ -26,27 +47,23 @@ export function ActionToolbar({
   isScanPaused,
   loading,
 }: ActionToolbarProps) {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   // Le bouton Scan est désactivé (grisé) si le système est occupé.
-  // SAUF si on est en pause (car on doit pouvoir cliquer pour reprendre).
-  // Note: Si on est en "Resuming" (transition), isSystemBusy est true, donc il sera grisé.
   const isScanDisabled = isSystemBusy;
 
-  // CORRECTION ICI : Les boutons Pause/Stop doivent être visibles quand on scanne ("running").
-  // On ne regarde PAS "isSystemBusy" ici, car pendant le scan, le système EST busy (looping),
-  // mais on doit quand même pouvoir cliquer sur Pause/Stop.
-  // Ils disparaîtront automatiquement quand visualState passera à "pausing" ou "stopping".
+  // Les boutons Pause/Stop doivent être visibles quand on scanne ("running").
   const showActions = visualState === "running";
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
       {/* Titre */}
       <div>
-        <h1 className="gen-typo text-2xl sm:text-3xl tracking-tight text-black">
-          DASHBOARD
+        <h1 className="gen-typo text-2xl sm:text-3xl tracking-tight text-black uppercase">
+          {t.title}
         </h1>
-        <p className="text-sm text-gray-500 font-medium mt-1">
-          Gérez vos candidatures et synchronisez vos emails.
-        </p>
+        <p className="text-sm text-gray-500 font-medium mt-1">{t.subtitle}</p>
       </div>
 
       {/* Barre d'actions */}
@@ -64,12 +81,12 @@ export function ActionToolbar({
             }
           `}
         >
-          {/* SPINNER : Visible ici (dans le bouton) quand le backend travaille */}
+          {/* SPINNER */}
           {isSystemBusy && (
             <div className="w-3 h-3 border-2 border-gray-400 border-t-gray-600 rounded-full animate-spin" />
           )}
 
-          {isScanPaused ? "Reprendre le Scan" : "+ New Scan"}
+          {isScanPaused ? t.resumeScan : t.newScan}
         </button>
 
         {/* BOUTONS CONTEXTUELS (Pause / Stop) */}
@@ -78,14 +95,14 @@ export function ActionToolbar({
             <button
               onClick={onPause}
               className="rounded-xl bg-amber-50 p-2.5 border border-amber-200 hover:bg-amber-100 transition-colors active:scale-95"
-              title="Mettre en pause"
+              title={t.pauseTooltip}
             >
               <IconPause className="h-4 w-4 text-amber-700" />
             </button>
             <button
               onClick={onStop}
               className="rounded-xl bg-red-50 p-2.5 border border-red-200 hover:bg-red-100 transition-colors active:scale-95"
-              title="Arrêter le scan"
+              title={t.stopTooltip}
             >
               <IconStop className="h-4 w-4 text-red-700" />
             </button>
@@ -100,7 +117,7 @@ export function ActionToolbar({
           onClick={onRefresh}
           disabled={loading || isSystemBusy}
           className="rounded-xl bg-white p-2.5 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors active:scale-95"
-          title="Rafraîchir les données"
+          title={t.refreshTooltip}
         >
           <IconRefresh
             className={

@@ -34,6 +34,71 @@ interface SettingsDrawerProps {
   setLanguage: (lang: "fr" | "en") => void;
 }
 
+const translations = {
+  fr: {
+    title: "PARAMÈTRES",
+    preferences: "Préférences",
+    language: "Langue",
+    interfaceLang: "Langue de l'interface",
+    history: "Historique",
+    compact: "Compact",
+    detailed: "Détail",
+    compactTitle: "Vue Compacte",
+    detailedTitle: "Vue Détaillée",
+    loading: "Chargement...",
+    noTransactions: "Aucune transaction.",
+    purchaseCredits: "Achat Crédits",
+    freeBonus: "Bonus Gratuit",
+    batchScan: "Scan Groupé",
+    emailScan: "Scan Email",
+    items: "items",
+    noDescription: "Sans description",
+    page: "Page",
+    support: "Support",
+    reportIssue: "Signaler un problème",
+    contactSupport: "Envoyer un mail au support technique",
+    dangerZone: "Zone de danger",
+    emailAccess: "Accès Emails",
+    connected: "Connecté",
+    notConnected: "Non connecté",
+    revoke: "Révoquer",
+    deleteAccount: "Supprimer le compte",
+    irreversible: "Irréversible",
+    delete: "Supprimer",
+  },
+  en: {
+    title: "SETTINGS",
+    preferences: "Preferences",
+    language: "Language",
+    interfaceLang: "Interface language",
+    history: "History",
+    compact: "Compact",
+    detailed: "Detail",
+    compactTitle: "Compact View",
+    detailedTitle: "Detailed View",
+    loading: "Loading...",
+    noTransactions: "No transactions.",
+    purchaseCredits: "Credit Purchase",
+    freeBonus: "Free Bonus",
+    batchScan: "Batch Scan",
+    emailScan: "Email Scan",
+    items: "items",
+    noDescription: "No description",
+    page: "Page",
+    support: "Support",
+    reportIssue: "Report a problem",
+    contactSupport: "Send email to technical support",
+    dangerZone: "Danger Zone",
+    emailAccess: "Email Access",
+    connected: "Connected",
+    notConnected: "Not connected",
+    revoke: "Revoke",
+    deleteAccount: "Delete Account",
+    irreversible: "Irreversible",
+    delete: "Delete",
+  },
+};
+
 export function SettingsDrawer({
   open,
   onClose,
@@ -43,6 +108,10 @@ export function SettingsDrawer({
   language,
   setLanguage,
 }: SettingsDrawerProps) {
+  // Use translation based on prop
+  const t =
+    translations[language as keyof typeof translations] || translations.en;
+
   const [history, setHistory] = useState<Transaction[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
@@ -91,8 +160,8 @@ export function SettingsDrawer({
       <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white border-l border-gray-200 shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 bg-white">
-          <h2 className="gen-typo text-2xl tracking-tight text-black">
-            PARAMÈTRES
+          <h2 className="gen-typo text-2xl tracking-tight text-black uppercase">
+            {t.title}
           </h2>
           <button
             onClick={onClose}
@@ -107,7 +176,7 @@ export function SettingsDrawer({
           {/* Préférences */}
           <section>
             <h3 className="text-xs font-bold uppercase text-gray-500 tracking-widest mb-4">
-              Préférences
+              {t.preferences}
             </h3>
             <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
@@ -115,9 +184,9 @@ export function SettingsDrawer({
                   <Globe className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="font-bold text-black">Langue</div>
+                  <div className="font-bold text-black">{t.language}</div>
                   <div className="text-xs text-gray-500 font-medium">
-                    Langue de l&apos;interface
+                    {t.interfaceLang}
                   </div>
                 </div>
               </div>
@@ -150,7 +219,7 @@ export function SettingsDrawer({
           <section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xs font-bold uppercase text-gray-500 tracking-widest flex items-center gap-2">
-                <Receipt className="w-3 h-3" /> Historique
+                <Receipt className="w-3 h-3" /> {t.history}
               </h3>
               <div className="flex bg-gray-100 rounded-lg p-0.5 border border-gray-200">
                 <button
@@ -160,10 +229,10 @@ export function SettingsDrawer({
                       ? "bg-brand-orange text-black shadow-sm"
                       : "text-gray-600 hover:text-black"
                   }`}
-                  title="Vue Compacte"
+                  title={t.compactTitle}
                 >
                   <Layers className="w-3 h-3" />
-                  <span className="hidden sm:inline">Compact</span>
+                  <span className="hidden sm:inline">{t.compact}</span>
                 </button>
                 <button
                   onClick={() => toggleMode("detailed")}
@@ -172,10 +241,10 @@ export function SettingsDrawer({
                       ? "bg-brand-orange text-black shadow-sm"
                       : "text-gray-600 hover:text-black"
                   }`}
-                  title="Vue Détaillée"
+                  title={t.detailedTitle}
                 >
                   <List className="w-3 h-3" />
-                  <span className="hidden sm:inline">Détail</span>
+                  <span className="hidden sm:inline">{t.detailed}</span>
                 </button>
               </div>
             </div>
@@ -184,11 +253,11 @@ export function SettingsDrawer({
               {loadingHistory ? (
                 <div className="flex-1 flex items-center justify-center text-gray-500 text-sm font-medium">
                   <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-200 border-t-brand-orange mr-3" />
-                  Chargement...
+                  {t.loading}
                 </div>
               ) : history.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-gray-500 text-sm font-medium">
-                  Aucune transaction.
+                  {t.noTransactions}
                 </div>
               ) : (
                 <div className="flex-1 divide-y divide-gray-100">
@@ -201,26 +270,30 @@ export function SettingsDrawer({
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-black font-bold">
                             {tx.type === "PURCHASE"
-                              ? "Achat Crédits"
+                              ? t.purchaseCredits
                               : tx.type === "BONUS"
-                                ? "Bonus Gratuit"
+                                ? t.freeBonus
                                 : viewMode === "compact"
-                                  ? "Scan Groupé"
-                                  : "Scan Email"}
+                                  ? t.batchScan
+                                  : t.emailScan}
                           </span>
                           {tx.count > 1 && (
                             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-brand-orange/10 text-brand-orange border border-brand-orange/20">
-                              {tx.count} items
+                              {tx.count} {t.items}
                             </span>
                           )}
                         </div>
                         <span className="text-[10px] text-gray-500 font-mono font-medium">
-                          {new Date(tx.created_at).toLocaleDateString()} •{" "}
-                          {new Date(tx.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}{" "}
-                          • {tx.description || "Sans description"}
+                          {new Date(tx.created_at).toLocaleDateString(language)}{" "}
+                          •{" "}
+                          {new Date(tx.created_at).toLocaleTimeString(
+                            language,
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}{" "}
+                          • {tx.description || t.noDescription}
                         </span>
                       </div>
                       <span
@@ -245,7 +318,7 @@ export function SettingsDrawer({
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <span className="text-xs text-gray-500 font-mono font-bold">
-                  Page {page}
+                  {t.page} {page}
                 </span>
                 <button
                   onClick={() => setPage((p) => p + 1)}
@@ -261,7 +334,7 @@ export function SettingsDrawer({
           {/* Support */}
           <section>
             <h3 className="text-xs font-bold uppercase text-gray-500 tracking-widest mb-4">
-              Support
+              {t.support}
             </h3>
             <a
               href="mailto:jobtrackerai.assist@gmail.com?subject=Signalement%20de%20problème%20JobTrackAI"
@@ -273,10 +346,10 @@ export function SettingsDrawer({
                 </div>
                 <div>
                   <div className="font-bold text-black group-hover:text-black transition-colors">
-                    Signaler un problème
+                    {t.reportIssue}
                   </div>
                   <div className="text-xs text-gray-500 font-medium">
-                    Envoyer un mail au support technique
+                    {t.contactSupport}
                   </div>
                 </div>
               </div>
@@ -289,7 +362,7 @@ export function SettingsDrawer({
           {/* Danger Zone */}
           <section className="pb-6">
             <h3 className="text-xs font-bold uppercase text-red-500 tracking-widest mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-3 h-3" /> Zone de danger
+              <AlertTriangle className="w-3 h-3" /> {t.dangerZone}
             </h3>
             <div className="space-y-3">
               <div className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between shadow-sm">
@@ -298,9 +371,9 @@ export function SettingsDrawer({
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-black">Accès Emails</div>
+                    <div className="font-bold text-black">{t.emailAccess}</div>
                     <div className="text-xs text-gray-500 font-medium">
-                      {isMailConnected ? "Connecté" : "Non connecté"}
+                      {isMailConnected ? t.connected : t.notConnected}
                     </div>
                   </div>
                 </div>
@@ -309,7 +382,7 @@ export function SettingsDrawer({
                   disabled={!isMailConnected}
                   className="px-3 py-2 text-xs font-bold rounded-lg border border-gray-300 hover:bg-gray-100 text-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  Révoquer
+                  {t.revoke}
                 </button>
               </div>
 
@@ -320,10 +393,10 @@ export function SettingsDrawer({
                   </div>
                   <div>
                     <div className="font-bold text-red-900">
-                      Supprimer le compte
+                      {t.deleteAccount}
                     </div>
                     <div className="text-xs text-red-600 font-medium">
-                      Irréversible
+                      {t.irreversible}
                     </div>
                   </div>
                 </div>
@@ -331,7 +404,7 @@ export function SettingsDrawer({
                   onClick={onDeleteAccount}
                   className="px-3 py-2 text-xs font-bold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors shadow-lg shadow-red-900/20"
                 >
-                  Supprimer
+                  {t.delete}
                 </button>
               </div>
             </div>

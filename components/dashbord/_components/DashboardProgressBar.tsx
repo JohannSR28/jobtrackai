@@ -2,6 +2,26 @@
 
 import { type ScanDTO } from "@/hooks/useScanTester";
 import { type VisualState } from "@/hooks/useDashboardController";
+import { useLanguage } from "@/hooks/useLanguage";
+
+const translations = {
+  fr: {
+    scanning: "SCAN EN COURS...",
+    completed: "TERMINÉ",
+    pausing: "PAUSE...",
+    stopping: "ARRÊT...",
+    resuming: "REPRISE...",
+    emails: "emails",
+  },
+  en: {
+    scanning: "SCANNING...",
+    completed: "COMPLETED",
+    pausing: "PAUSING...",
+    stopping: "STOPPING...",
+    resuming: "RESUMING...",
+    emails: "emails",
+  },
+};
 
 export function DashboardProgressBar({
   scan,
@@ -10,6 +30,9 @@ export function DashboardProgressBar({
   scan: ScanDTO;
   visualState: VisualState;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   const { processedCount, totalCount, errorMessage } = scan;
 
   const rawRatio = totalCount > 0 ? processedCount / totalCount : 0;
@@ -17,11 +40,11 @@ export function DashboardProgressBar({
 
   const config = {
     idle: { color: "bg-gray-200", text: "", visible: false },
-    running: { color: "bg-blue-600", text: "SCANNING...", visible: true }, // Bleu
-    completed: { color: "bg-emerald-500", text: "COMPLETED", visible: true }, // Vert
-    pausing: { color: "bg-amber-400", text: "PAUSING...", visible: true }, // Jaune
-    stopping: { color: "bg-red-500", text: "STOPPING...", visible: true }, // Rouge
-    resuming: { color: "bg-amber-400", text: "RESUMING...", visible: true }, // Jaune
+    running: { color: "bg-blue-600", text: t.scanning, visible: true }, // Bleu
+    completed: { color: "bg-emerald-500", text: t.completed, visible: true }, // Vert
+    pausing: { color: "bg-amber-400", text: t.pausing, visible: true }, // Jaune
+    stopping: { color: "bg-red-500", text: t.stopping, visible: true }, // Rouge
+    resuming: { color: "bg-amber-400", text: t.resuming, visible: true }, // Jaune
   };
 
   const current = config[visualState];
@@ -73,7 +96,7 @@ export function DashboardProgressBar({
             </span>
 
             <span className="hidden border-l border-gray-300 pl-4 text-gray-600 font-medium sm:inline-block">
-              {processedCount} / {totalCount} emails
+              {processedCount} / {totalCount} {t.emails}
             </span>
           </div>
 

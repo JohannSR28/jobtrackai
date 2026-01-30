@@ -1,10 +1,39 @@
 "use client";
+
 import { useState } from "react";
 import type { Bucket, JobStatus } from "@/hooks/useJobApplications";
 import { ToggleMini } from "./ui";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type StatusFilter = JobStatus | "all";
 type ArchiveMode = "active" | "archived";
+
+const translations = {
+  fr: {
+    title: "CANDIDATURES",
+    active: "Actives",
+    archived: "Archivées",
+    total: "Total",
+    page: "Page",
+    prev: "← Préc.",
+    next: "Suiv. →",
+    filterBy: "FILTRER PAR",
+    email: "email",
+    emails: "emails",
+  },
+  en: {
+    title: "APPLICATIONS",
+    active: "Active",
+    archived: "Archived",
+    total: "Total",
+    page: "Page",
+    prev: "← Prev",
+    next: "Next →",
+    filterBy: "FILTER BY",
+    email: "email",
+    emails: "emails",
+  },
+};
 
 export function ApplicationsPanel(props: {
   archiveMode: ArchiveMode;
@@ -32,6 +61,9 @@ export function ApplicationsPanel(props: {
 
   statusTextClass: (s: JobStatus) => string;
 }) {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Trouver l'option active pour l'affichage du bouton
@@ -45,18 +77,17 @@ export function ApplicationsPanel(props: {
       : (currentOption?.dot ?? "bg-gray-400");
 
   return (
-    // J'ai passé border-black à border-gray-200 pour plus de légèreté
     <div className="rounded-2xl bg-white border border-gray-200 px-6 py-6 shadow-sm">
       {/* Header : Titre + Toggle + Pagination */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-4">
-          <div className="gen-typo text-xl tracking-tight text-black">
-            APPLICATIONS
+          <div className="gen-typo text-xl tracking-tight text-black uppercase">
+            {t.title}
           </div>
 
           <ToggleMini
-            leftLabel="Active"
-            rightLabel="Archived"
+            leftLabel={t.active}
+            rightLabel={t.archived}
             value={props.archiveMode === "active" ? "left" : "right"}
             onChange={(v) =>
               props.setArchiveMode(v === "left" ? "active" : "archived")
@@ -66,12 +97,12 @@ export function ApplicationsPanel(props: {
 
         <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-gray-500">
           <span>
-            Total:{" "}
+            {t.total}:{" "}
             <span className="text-black font-bold">{props.filteredTotal}</span>
           </span>
           <span className="text-gray-300">•</span>
           <span>
-            Page {props.page}/{props.maxPage}
+            {t.page} {props.page}/{props.maxPage}
           </span>
           <div className="flex items-center gap-1 ml-2">
             <button
@@ -79,14 +110,14 @@ export function ApplicationsPanel(props: {
               disabled={props.page <= 1}
               onClick={props.onPrev}
             >
-              ← Prev
+              {t.prev}
             </button>
             <button
               className="rounded-lg bg-white px-3 py-2 border border-gray-200 hover:border-brand-orange hover:text-brand-orange disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-gray-400 disabled:cursor-not-allowed transition-all font-bold text-black shadow-sm"
               disabled={props.page >= props.maxPage}
               onClick={props.onNext}
             >
-              Next →
+              {t.next}
             </button>
           </div>
         </div>
@@ -103,7 +134,7 @@ export function ApplicationsPanel(props: {
 
         <div className="flex items-center gap-3">
           <div className="text-xs text-gray-400 font-bold uppercase tracking-wide">
-            FILTER BY
+            {t.filterBy}
           </div>
 
           <button
@@ -236,7 +267,7 @@ export function ApplicationsPanel(props: {
                 {app.status}
               </div>
               <div className="text-[10px] text-gray-400 font-medium">
-                {emails.length} email{emails.length !== 1 ? "s" : ""}
+                {emails.length} {emails.length !== 1 ? t.emails : t.email}
               </div>
             </div>
           </div>

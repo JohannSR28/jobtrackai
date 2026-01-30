@@ -5,6 +5,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 const translations = {
   fr: {
@@ -17,7 +18,8 @@ const translations = {
     terms: "Conditions d'utilisation",
     and: "et notre",
     privacy: "Politique de confidentialité",
-    backHome: "← Retour à l'accueil",
+    backHome: "← Retour à l'accueil", // Lien du bas
+    goToLanding: "Aller à l'accueil", // Nouveau lien du header
     genericError: "Une erreur est survenue. Veuillez recommencer plus tard.",
   },
   en: {
@@ -30,7 +32,8 @@ const translations = {
     terms: "Terms of Service",
     and: "and",
     privacy: "Privacy Policy",
-    backHome: "← Back to home",
+    backHome: "← Back to home", // Lien du bas
+    goToLanding: "Go to Landing Page", // Nouveau lien du header
     genericError: "An error occurred. Please try again later.",
   },
 };
@@ -38,10 +41,10 @@ const translations = {
 export default function Login() {
   const { language } = useLanguage();
   const t = translations[language];
+  const LANDING_URL = "https://jobtrackai-landing-page.vercel.app/";
 
-  // 2. Récupérer les paramètres de l'URL
+  // Récupérer les paramètres de l'URL
   const searchParams = useSearchParams();
-  // On cherche le paramètre ?next=... Sinon par défaut c'est /dashboard
   const nextRedirect = searchParams.get("next") || "/dashboard";
 
   const { signIn } = useAuth();
@@ -52,8 +55,6 @@ export default function Login() {
     setIsBusy(true);
     setError(null);
     try {
-      // 3. On passe la redirection dynamique à signIn
-      // Si on vient de Pricing, nextRedirect sera "/pricing-page"
       await signIn(provider, nextRedirect);
     } catch (e) {
       console.error(e);
@@ -67,17 +68,30 @@ export default function Login() {
       {/* Gradient orange background */}
       <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-brand-orange opacity-[0.03] blur-[120px] rounded-full pointer-events-none"></div>
 
-      {/* Header simplifié */}
+      {/* Header */}
       <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          {/* Section Logo (Gauche) */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white font-bold text-lg group-hover:bg-brand-orange transition-colors duration-300">
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white font-bold text-lg group-hover:bg-brand-orange transition-colors duration-300 flex-shrink-0">
               J
             </div>
-            <span className="font-bold text-xl tracking-tight text-black">
+            <span className="font-bold text-xl tracking-tight text-black hidden sm:block">
               JobTrackAI
             </span>
           </Link>
+
+          {/* Section Droite (Switcher + Bouton Landing Page) */}
+          <div className="flex items-center gap-3 sm:gap-6">
+            <LanguageSwitcher />
+
+            <Link
+              href={LANDING_URL}
+              className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-brand-orange transition-colors"
+            >
+              {t.goToLanding}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -211,7 +225,7 @@ export default function Login() {
             .
           </p>
 
-          {/* Back to home */}
+          {/* Back to home (Lien du bas) */}
           <div className="mt-12 text-center">
             <Link
               href="/"
@@ -227,7 +241,7 @@ export default function Login() {
       <footer className="py-6 border-t border-gray-200 relative z-10">
         <div className="max-w-[1440px] mx-auto px-6">
           <p className="text-xs text-gray-400 font-medium text-center">
-            © 2024 JOBTRACKAI.{" "}
+            © 2026 JOBTRACKAI.{" "}
             {language === "fr" ? "TOUS DROITS RÉSERVÉS" : "ALL RIGHTS RESERVED"}
             .
           </p>

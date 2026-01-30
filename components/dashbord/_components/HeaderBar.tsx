@@ -4,6 +4,22 @@ import { useRouter } from "next/navigation";
 import { Dropdown, MenuItem } from "./ui";
 import { IconChevronDown, IconUser } from "./icons";
 import { Settings } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
+
+const translations = {
+  fr: {
+    pts: "pts",
+    settings: "Paramètres",
+    buyPoints: "Acheter des points",
+    logout: "Se déconnecter",
+  },
+  en: {
+    pts: "pts",
+    settings: "Settings",
+    buyPoints: "Buy points",
+    logout: "Log out",
+  },
+};
 
 export function HeaderBar(props: {
   points: number;
@@ -15,10 +31,11 @@ export function HeaderBar(props: {
   onOpenSettings: () => void;
 }) {
   const router = useRouter();
+  const { language } = useLanguage();
+  const t = translations[language];
 
   const handleLogoClick = () => {
     // Redirige vers le dashboard.
-    // Si tu veux un "vrai" rafraîchissement navigateur, utilise : window.location.href = '/dashboard';
     router.push("/dashboard");
   };
 
@@ -59,7 +76,7 @@ export function HeaderBar(props: {
                 <span className="font-bold text-sm text-brand-orange">
                   {props.points}{" "}
                   <span className="text-orange-400/70 font-medium text-xs">
-                    pts
+                    {t.pts}
                   </span>
                 </span>
               )}
@@ -77,7 +94,7 @@ export function HeaderBar(props: {
               type="button"
               onClick={props.onOpenSettings}
               className="p-2 rounded-full hover:bg-gray-100 text-gray-500 hover:text-black transition-colors"
-              title="Paramètres"
+              title={t.settings}
             >
               <Settings className="w-5 h-5" />
             </button>
@@ -97,7 +114,7 @@ export function HeaderBar(props: {
 
               <Dropdown open={props.profileMenuOpen} align="right">
                 <MenuItem
-                  label="Acheter des points"
+                  label={t.buyPoints}
                   onClick={() => {
                     props.setProfileMenuOpen(false);
                     router.push("/pricing-page");
@@ -106,7 +123,7 @@ export function HeaderBar(props: {
                 <div className="my-1 h-px bg-gray-100" />
                 <MenuItem
                   danger
-                  label="Se déconnecter"
+                  label={t.logout}
                   onClick={() => {
                     props.setProfileMenuOpen(false);
                     props.onLogout();

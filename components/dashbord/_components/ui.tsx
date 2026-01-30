@@ -2,6 +2,7 @@
 
 import type React from "react";
 import type { JobStatus } from "@/hooks/useJobApplications";
+import { useLanguage } from "@/hooks/useLanguage";
 
 // --- CONSTANTS & UTILS ---
 
@@ -183,7 +184,57 @@ export function ToggleMini(props: {
     </div>
   );
 }
-// --- SPECIFIC MODALS ---
+
+// --- SPECIFIC MODALS & TRANSLATIONS ---
+
+const modalTranslations = {
+  fr: {
+    alert: {
+      ok: "OK, compris",
+    },
+    resume: {
+      title: "SCAN DÉTECTÉ",
+      text1: "Un scan est actuellement",
+      text2: "Que souhaitez-vous faire ?",
+      stop: "Arrêter le scan",
+      resume: "Reprendre",
+    },
+    delete: {
+      title: "SUPPRIMER LE COMPTE",
+      warningTitle: "Attention, action irréversible",
+      warningBody:
+        "Vous êtes sur le point de supprimer définitivement votre compte et toutes vos données associées (candidatures, emails, scans).",
+      confirmQuestion:
+        "Voulez-vous vraiment continuer ? Cette action ne peut pas être annulée.",
+      cancel: "Annuler",
+      confirm: "Confirmer la suppression",
+      deleting: "Suppression...",
+    },
+  },
+  en: {
+    alert: {
+      ok: "OK, understood",
+    },
+    resume: {
+      title: "SCAN DETECTED",
+      text1: "A scan is currently",
+      text2: "What would you like to do?",
+      stop: "Stop scan",
+      resume: "Resume",
+    },
+    delete: {
+      title: "DELETE ACCOUNT",
+      warningTitle: "Warning: Irreversible action",
+      warningBody:
+        "You are about to permanently delete your account and all associated data (applications, emails, scans).",
+      confirmQuestion:
+        "Do you really want to proceed? This action cannot be undone.",
+      cancel: "Cancel",
+      confirm: "Confirm deletion",
+      deleting: "Deleting...",
+    },
+  },
+};
 
 export function AlertModal({
   open,
@@ -196,6 +247,9 @@ export function AlertModal({
   message: string;
   onClose: () => void;
 }) {
+  const { language } = useLanguage();
+  const t = modalTranslations[language].alert;
+
   return (
     <ModalShell open={open} title={title} onClose={onClose}>
       <div className="text-sm font-medium text-gray-600 mb-8 leading-relaxed whitespace-pre-line">
@@ -206,7 +260,7 @@ export function AlertModal({
           onClick={onClose}
           className="rounded-xl bg-black px-6 py-3 text-xs font-bold text-white hover:bg-gray-800 transition-colors shadow-lg"
         >
-          OK, compris
+          {t.ok}
         </button>
       </div>
     </ModalShell>
@@ -226,17 +280,20 @@ export function ResumeScanModal({
   onStop: () => void;
   onClose: () => void;
 }) {
+  const { language } = useLanguage();
+  const t = modalTranslations[language].resume;
+
   return (
-    <ModalShell open={open} title="SCAN DETECTED" onClose={onClose}>
+    <ModalShell open={open} title={t.title} onClose={onClose}>
       <div className="text-sm text-gray-600 mb-8 space-y-2 font-medium">
         <p>
-          Un scan est actuellement{" "}
+          {t.text1}{" "}
           <strong className="text-[#ff9f43] uppercase bg-orange-50 px-2 py-0.5 rounded">
             {status}
           </strong>
           .
         </p>
-        <p>Que souhaitez-vous faire ?</p>
+        <p>{t.text2}</p>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -247,7 +304,7 @@ export function ResumeScanModal({
           }}
           className="rounded-xl bg-red-50 px-4 py-3 text-xs font-bold text-red-600 border border-red-100 hover:bg-red-100 transition-colors"
         >
-          Arrêter le scan
+          {t.stop}
         </button>
         <button
           onClick={() => {
@@ -256,7 +313,7 @@ export function ResumeScanModal({
           }}
           className="rounded-xl bg-[#ff9f43] px-6 py-3 text-xs font-bold text-black shadow-lg shadow-orange-500/20 hover:bg-[#e68e3c] transition-colors"
         >
-          Reprendre
+          {t.resume}
         </button>
       </div>
     </ModalShell>
@@ -274,8 +331,11 @@ export function DeleteAccountModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
+  const { language } = useLanguage();
+  const t = modalTranslations[language].delete;
+
   return (
-    <ModalShell open={open} title="SUPPRIMER LE COMPTE" onClose={onClose}>
+    <ModalShell open={open} title={t.title} onClose={onClose}>
       <div className="space-y-6">
         <div className="rounded-xl bg-red-50 p-4 border border-red-100">
           <div className="flex gap-3">
@@ -294,18 +354,16 @@ export function DeleteAccountModal({
               </svg>
             </div>
             <div className="text-sm text-red-800">
-              <h3 className="font-bold">Attention, action irréversible</h3>
+              <h3 className="font-bold">{t.warningTitle}</h3>
               <p className="mt-1 text-red-600 font-medium leading-relaxed">
-                Vous êtes sur le point de supprimer définitivement votre compte
-                et toutes vos données associées (candidatures, emails, scans).
+                {t.warningBody}
               </p>
             </div>
           </div>
         </div>
 
         <p className="text-sm text-gray-500 font-medium px-1">
-          Voulez-vous vraiment continuer ? Cette action ne peut pas être
-          annulée.
+          {t.confirmQuestion}
         </p>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -315,7 +373,7 @@ export function DeleteAccountModal({
             disabled={busy}
             className="rounded-xl bg-white px-5 py-3 text-xs font-bold text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
-            Annuler
+            {t.cancel}
           </button>
           <button
             type="button"
@@ -323,7 +381,7 @@ export function DeleteAccountModal({
             disabled={busy}
             className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-red-500/20 hover:bg-red-700 transition-colors disabled:opacity-50"
           >
-            {busy ? "Suppression..." : "Confirmer la suppression"}
+            {busy ? t.deleting : t.confirm}
           </button>
         </div>
       </div>

@@ -40,6 +40,46 @@ type EmailEditState = {
   eventType: string;
 };
 
+// --- TRADUCTIONS ---
+const translations = {
+  fr: {
+    alerts: {
+      archiveConfirm: "Êtes-vous sûr de vouloir archiver/désarchiver ?",
+      deleteConfirm: "Supprimer définitivement cette candidature ?",
+      infoTitle: "Information",
+    },
+    status: {
+      all: "Tout",
+      applied: "Postulé",
+      interview: "Entretien",
+      offer: "Offre",
+      rejection: "Refus",
+      unknown: "Inconnu",
+    },
+    misc: {
+      unknown: "Inconnu",
+    },
+  },
+  en: {
+    alerts: {
+      archiveConfirm: "Are you sure you want to archive/unarchive?",
+      deleteConfirm: "Permanently delete this application?",
+      infoTitle: "Information",
+    },
+    status: {
+      all: "All",
+      applied: "Applied",
+      interview: "Interview",
+      offer: "Offer",
+      rejection: "Rejection",
+      unknown: "Unknown",
+    },
+    misc: {
+      unknown: "Unknown",
+    },
+  },
+};
+
 export default function JobDomainPage() {
   // 1. Hook Principal (Cerveau - gère la machine à états du scan)
   const ctrl = useDashboardController();
@@ -47,6 +87,7 @@ export default function JobDomainPage() {
   // 2. Hooks Auxiliaires
   const { removeConnection } = useMailActions();
   const { language, setLanguage } = useLanguage();
+  const t = translations[language]; // Sélection de la langue
 
   // 3. États UI Locaux (Sélection & Formulaires)
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
@@ -117,8 +158,8 @@ export default function JobDomainPage() {
 
   const handleArchive = async () => {
     if (!selectedBucket) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir archiver/désarchiver ?"))
-      return;
+    // Traduction de l'alerte
+    if (!window.confirm(t.alerts.archiveConfirm)) return;
     await ctrl.archiveApplication(
       selectedBucket.app.id,
       !selectedBucket.app.archived,
@@ -129,7 +170,8 @@ export default function JobDomainPage() {
 
   const handleDelete = async () => {
     if (!selectedBucket) return;
-    if (!window.confirm("Supprimer définitivement cette candidature ?")) return;
+    // Traduction de l'alerte
+    if (!window.confirm(t.alerts.deleteConfirm)) return;
     await ctrl.deleteApplication(selectedBucket.app.id);
     setSelectedAppId(null);
     ctrl.fetchData();
@@ -202,13 +244,18 @@ export default function JobDomainPage() {
           setArchiveMode={ctrl.filters.setArchiveMode}
           statusFilter={ctrl.filters.statusFilter}
           setStatusFilter={ctrl.filters.setStatusFilter}
+          // TRADUCTION DES LABELS DU FILTRE
           statusOptions={[
-            { key: "all", label: "All" },
-            { key: "applied", label: "Applied", dot: "bg-blue-500" },
-            { key: "interview", label: "Interview", dot: "bg-purple-500" },
-            { key: "offer", label: "Offer", dot: "bg-emerald-500" },
-            { key: "rejection", label: "Rejection", dot: "bg-red-500" },
-            { key: "unknown", label: "Unknown", dot: "bg-gray-300" },
+            { key: "all", label: t.status.all },
+            { key: "applied", label: t.status.applied, dot: "bg-blue-500" },
+            {
+              key: "interview",
+              label: t.status.interview,
+              dot: "bg-purple-500",
+            },
+            { key: "offer", label: t.status.offer, dot: "bg-emerald-500" },
+            { key: "rejection", label: t.status.rejection, dot: "bg-red-500" },
+            { key: "unknown", label: t.status.unknown, dot: "bg-gray-300" },
           ]}
           statusCounts={
             ctrl.data?.statusCounts ?? {
@@ -270,15 +317,15 @@ export default function JobDomainPage() {
 
       <ResumeScanModal
         open={ctrl.modals.resume}
-        status={ctrl.scanTester.scan?.status || "Unknown"}
+        status={ctrl.scanTester.scan?.status || t.misc.unknown}
         onClose={() => ctrl.toggleModal("resume", false)}
-        onResume={ctrl.handleResumeScan} // On branche les nouveaux handlers
-        onStop={ctrl.handleStopScan} // On branche les nouveaux handlers
+        onResume={ctrl.handleResumeScan}
+        onStop={ctrl.handleStopScan}
       />
 
       <AlertModal
         open={ctrl.modals.alert}
-        title="Information"
+        title={t.alerts.infoTitle}
         message={ctrl.alertMessage}
         onClose={() => ctrl.toggleModal("alert", false)}
       />

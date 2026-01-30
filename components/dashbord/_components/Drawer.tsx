@@ -5,6 +5,7 @@ import {
   statusDotClass,
 } from "./ui";
 import type { Bucket, JobStatus } from "@/hooks/useJobApplications";
+import { useLanguage } from "@/hooks/useLanguage";
 
 type DrawerProps = Readonly<{
   selectedBucket: Bucket | null;
@@ -30,7 +31,62 @@ type DrawerProps = Readonly<{
   statusTextClass?: (s: JobStatus) => string;
 }>;
 
+const translations = {
+  fr: {
+    unknownCompany: "Entreprise inconnue",
+    positionNotSpecified: "Poste non spécifié",
+    archived: "Archivée",
+    archive: "Archiver",
+    delete: "Supprimer",
+    personalNotes: "Notes Personnelles",
+    unsavedChanges: "Modifications non enregistrées",
+    notePlaceholder: "Ajoutez des notes privées sur cette candidature...",
+    saveNote: "Enregistrer",
+    cancel: "Annuler",
+    emailHistory: "Historique des Emails",
+    unknownSender: "Expéditeur inconnu",
+    noSubject: "Sans objet",
+    edit: "Éditer",
+    noPreview: "Aucun aperçu disponible.",
+    // Status labels for display
+    statusLabels: {
+      applied: "Postulé",
+      interview: "Entretien",
+      offer: "Offre",
+      rejection: "Refus",
+      unknown: "Inconnu",
+    },
+  },
+  en: {
+    unknownCompany: "Unknown Company",
+    positionNotSpecified: "Position not specified",
+    archived: "Archived",
+    archive: "Archive",
+    delete: "Delete",
+    personalNotes: "Personal Notes",
+    unsavedChanges: "Unsaved changes",
+    notePlaceholder: "Add private notes about this application...",
+    saveNote: "Save Note",
+    cancel: "Cancel",
+    emailHistory: "Email History",
+    unknownSender: "Unknown Sender",
+    noSubject: "No Subject",
+    edit: "Edit",
+    noPreview: "No preview available.",
+    statusLabels: {
+      applied: "Applied",
+      interview: "Interview",
+      offer: "Offer",
+      rejection: "Rejection",
+      unknown: "Unknown",
+    },
+  },
+};
+
 export function Drawer(props: DrawerProps) {
+  const { language } = useLanguage();
+  const t = translations[language];
+
   const statusText = props.statusTextClass ?? defaultStatusTextClass;
 
   if (!props.selectedBucket) return null;
@@ -41,6 +97,11 @@ export function Drawer(props: DrawerProps) {
     const dateB = b.received_at ? new Date(b.received_at).getTime() : 0;
     return dateB - dateA;
   });
+
+  // Helper pour afficher le label traduit du statut ou la valeur brute si non trouvée
+  const displayStatus = (status: string) => {
+    return t.statusLabels[status as keyof typeof t.statusLabels] || status;
+  };
 
   return (
     <>
@@ -56,10 +117,10 @@ export function Drawer(props: DrawerProps) {
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <div className="gen-typo text-3xl tracking-tight text-black break-words">
-                  {b.app.company ?? "Unknown Company"}
+                  {b.app.company ?? t.unknownCompany}
                 </div>
                 <div className="text-base text-gray-500 font-medium mt-1">
-                  {b.app.position ?? "Position not specified"}
+                  {b.app.position ?? t.positionNotSpecified}
                 </div>
               </div>
               <button
@@ -103,7 +164,7 @@ export function Drawer(props: DrawerProps) {
                     statusText(props.appStatusDraft),
                   ].join(" ")}
                 >
-                  {props.appStatusDraft}
+                  {displayStatus(props.appStatusDraft)}
                 </span>
                 <svg
                   width="12"
@@ -134,7 +195,7 @@ export function Drawer(props: DrawerProps) {
                 disabled={props.busy}
                 onClick={props.onArchiveApplication}
               >
-                {b.app.archived ? "Archived" : "Archive"}
+                {b.app.archived ? t.archived : t.archive}
               </button>
 
               <button
@@ -143,7 +204,7 @@ export function Drawer(props: DrawerProps) {
                 disabled={props.busy}
                 onClick={props.onDeleteApplication}
               >
-                Delete
+                {t.delete}
               </button>
             </div>
           </div>
@@ -154,11 +215,11 @@ export function Drawer(props: DrawerProps) {
             <div className="px-8 py-6 bg-gray-50/50 border-t border-b border-gray-100">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  Personal Notes
+                  {t.personalNotes}
                 </div>
                 {props.noteDirty && (
                   <span className="text-[10px] font-bold text-brand-orange bg-brand-orange/10 px-2 py-1 rounded-md">
-                    Unsaved changes
+                    {t.unsavedChanges}
                   </span>
                 )}
               </div>
@@ -167,7 +228,7 @@ export function Drawer(props: DrawerProps) {
                 className="w-full min-h-[120px] rounded-xl bg-white border border-gray-200 px-4 py-3 text-sm font-medium text-black outline-none focus:border-brand-orange focus:ring-1 focus:ring-brand-orange transition-all placeholder:text-gray-300 resize-none shadow-sm"
                 value={props.noteDraft}
                 onChange={(e) => props.setNoteDraft(e.target.value)}
-                placeholder="Add private notes about this application..."
+                placeholder={t.notePlaceholder}
               />
 
               {props.noteDirty && (
@@ -178,7 +239,7 @@ export function Drawer(props: DrawerProps) {
                     disabled={props.busy}
                     onClick={props.onSaveApplication}
                   >
-                    Save Note
+                    {t.saveNote}
                   </button>
                   <button
                     type="button"
@@ -186,7 +247,7 @@ export function Drawer(props: DrawerProps) {
                     disabled={props.busy}
                     onClick={props.onResetNote}
                   >
-                    Cancel
+                    {t.cancel}
                   </button>
                 </div>
               )}
@@ -196,7 +257,7 @@ export function Drawer(props: DrawerProps) {
             <div className="px-8 py-8 bg-white pb-20">
               <div className="flex items-center justify-between mb-6">
                 <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  Email History
+                  {t.emailHistory}
                 </div>
                 <div className="text-xs font-bold text-black bg-gray-100 px-2 py-1 rounded-md">
                   {b.emails.length}
@@ -212,10 +273,10 @@ export function Drawer(props: DrawerProps) {
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <div className="min-w-0">
                         <div className="text-sm font-bold text-black truncate">
-                          {em.from_text || "Unknown Sender"}
+                          {em.from_text || t.unknownSender}
                         </div>
                         <div className="text-xs text-gray-500 font-medium truncate mt-0.5">
-                          {em.subject || "No Subject"}
+                          {em.subject || t.noSubject}
                         </div>
                       </div>
                       <button
@@ -223,7 +284,7 @@ export function Drawer(props: DrawerProps) {
                         className="opacity-0 group-hover:opacity-100 rounded-lg bg-gray-50 px-3 py-1.5 text-[10px] font-bold text-gray-600 border border-gray-200 hover:bg-white hover:text-brand-orange hover:border-brand-orange transition-all"
                         onClick={() => props.onEditEmail(em.id)}
                       >
-                        Edit
+                        {t.edit}
                       </button>
                     </div>
 
@@ -239,12 +300,12 @@ export function Drawer(props: DrawerProps) {
                                 : "bg-gray-50 text-gray-600 border-gray-200"
                         }`}
                       >
-                        {em.status}
+                        {displayStatus(em.status)}
                       </div>
                       {em.received_at && (
                         <div className="text-[10px] text-gray-400 font-medium">
                           {new Date(em.received_at).toLocaleDateString(
-                            undefined,
+                            language,
                             {
                               month: "short",
                               day: "numeric",
@@ -259,7 +320,7 @@ export function Drawer(props: DrawerProps) {
                     <div className="relative">
                       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-100 rounded-full"></div>
                       <div className="pl-3 text-xs text-gray-600 leading-relaxed font-medium line-clamp-3 group-hover:line-clamp-none transition-all">
-                        {(em.snippet || "").trim() || "No preview available."}
+                        {(em.snippet || "").trim() || t.noPreview}
                       </div>
                     </div>
                   </div>
