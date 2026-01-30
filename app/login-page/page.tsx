@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react"; // 1. Import Suspense
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -18,8 +18,8 @@ const translations = {
     terms: "Conditions d'utilisation",
     and: "et notre",
     privacy: "Politique de confidentialité",
-    backHome: "← Retour à l'accueil", // Lien du bas
-    goToLanding: "Aller à l'accueil", // Nouveau lien du header
+    backHome: "← Retour à l'accueil",
+    goToLanding: "Aller à l'accueil",
     genericError: "Une erreur est survenue. Veuillez recommencer plus tard.",
   },
   en: {
@@ -32,16 +32,19 @@ const translations = {
     terms: "Terms of Service",
     and: "and",
     privacy: "Privacy Policy",
-    backHome: "← Back to home", // Lien du bas
-    goToLanding: "Go to Landing Page", // Nouveau lien du header
+    backHome: "← Back to home",
+    goToLanding: "Go to Landing Page",
     genericError: "An error occurred. Please try again later.",
   },
 };
 
-export default function Login() {
+const LANDING_URL = "https://jobtrackai-landing-page.vercel.app/";
+
+// 2. On renomme ton composant principal en "LoginContent"
+// C'est lui qui contient useSearchParams()
+function LoginContent() {
   const { language } = useLanguage();
   const t = translations[language];
-  const LANDING_URL = "https://jobtrackai-landing-page.vercel.app/";
 
   // Récupérer les paramètres de l'URL
   const searchParams = useSearchParams();
@@ -72,7 +75,7 @@ export default function Login() {
       <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Section Logo (Gauche) */}
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href={LANDING_URL} className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center text-white font-bold text-lg group-hover:bg-brand-orange transition-colors duration-300 flex-shrink-0">
               J
             </div>
@@ -225,10 +228,10 @@ export default function Login() {
             .
           </p>
 
-          {/* Back to home (Lien du bas) */}
+          {/* Back to home */}
           <div className="mt-12 text-center">
             <Link
-              href="/"
+              href={LANDING_URL}
               className="inline-flex items-center text-sm font-semibold text-gray-600 hover:text-brand-orange transition-colors gap-1"
             >
               {t.backHome}
@@ -248,5 +251,14 @@ export default function Login() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function Login() {
+  return (
+    // Suspense gère le chargement pendant que Next.js récupère les params de l'URL
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <LoginContent />
+    </Suspense>
   );
 }
