@@ -1,5 +1,3 @@
-// app/api/emails/[id]/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { JobEmailRepository } from "@/repositories/jobEmailRepository";
@@ -8,27 +6,12 @@ import { JobIngestionService } from "@/services/jobDomain/JobIngestionService";
 import { UpdateEmailService } from "@/services/jobDomain/emails/updateEmailService";
 import type { JobStatus } from "@/services/jobDomain/types";
 
-/**
- * PATCH /api/emails/:id
- *
- * Body:
- * {
- *   company?: string | null,
- *   position?: string | null,
- *   status?: JobStatus,
- *   eventType?: string | null
- * }
- *
- * Response:
- * {
- *   email: JobEmail,
- *   applicationUpdated?: JobApplication
- * }
- */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }, // ✅ Correction du type
 ) {
+  const params = await props.params; // ✅ Await des params
+
   try {
     // 1. Auth
     const supabase = await createClient();
@@ -88,7 +71,7 @@ export async function PATCH(
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

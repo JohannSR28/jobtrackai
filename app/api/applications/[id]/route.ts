@@ -1,5 +1,3 @@
-// app/api/applications/[id]/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { JobApplicationRepository } from "@/repositories/jobApplicationRepository";
@@ -9,26 +7,12 @@ import { UpdateApplicationService } from "@/services/jobDomain/applications/upda
 import { DeleteApplicationService } from "@/services/jobDomain/applications/deleteApplicationService";
 import type { JobStatus } from "@/services/jobDomain/types";
 
-/**
- * PATCH /api/applications/:id
- *
- * Body:
- * {
- *   company?: string | null,
- *   position?: string | null,
- *   status?: JobStatus,
- *   notes?: string | null
- * }
- *
- * Response:
- * {
- *   application: JobApplication
- * }
- */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
+
   try {
     // 1. Auth
     const supabase = await createClient();
@@ -80,7 +64,7 @@ export async function PATCH(
     if (error instanceof Error && error.message === "APPLICATION_NOT_FOUND") {
       return NextResponse.json(
         { error: "Application not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -89,24 +73,17 @@ export async function PATCH(
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
-/**
- * DELETE /api/applications/:id
- *
- * Response:
- * {
- *   deleted: true,
- *   emailsDeleted: number
- * }
- */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }, // ✅ Correction du type
 ) {
+  const params = await props.params; // ✅ Await des params
+
   try {
     // 1. Auth
     const supabase = await createClient();
@@ -138,7 +115,7 @@ export async function DELETE(
     if (error instanceof Error && error.message === "APPLICATION_NOT_FOUND") {
       return NextResponse.json(
         { error: "Application not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -147,7 +124,7 @@ export async function DELETE(
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -1,5 +1,3 @@
-// app/api/applications/[id]/archive/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { JobApplicationRepository } from "@/repositories/jobApplicationRepository";
@@ -7,24 +5,12 @@ import { JobEmailRepository } from "@/repositories/jobEmailRepository";
 import { JobIngestionService } from "@/services/jobDomain/JobIngestionService";
 import { ArchiveApplicationService } from "@/services/jobDomain/applications/archiveApplicationService";
 
-/**
- * PATCH /api/applications/:id/archive
- *
- * Body:
- * {
- *   archived: boolean
- * }
- *
- * Response:
- * {
- *   application: JobApplication,
- *   emailsUpdated: number
- * }
- */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
+
   try {
     // 1. Auth
     const supabase = await createClient();
@@ -45,7 +31,7 @@ export async function PATCH(
     if (typeof archived !== "boolean") {
       return NextResponse.json(
         { error: 'Invalid body: "archived" must be a boolean' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,7 +55,7 @@ export async function PATCH(
     if (error instanceof Error && error.message === "APPLICATION_NOT_FOUND") {
       return NextResponse.json(
         { error: "Application not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -78,7 +64,7 @@ export async function PATCH(
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
