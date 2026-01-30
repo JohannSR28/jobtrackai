@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
@@ -28,26 +30,23 @@ export type VisualState =
   | "stopping"
   | "resuming";
 
-// --- HELPERS DATE ---
-// On s'assure de créer les dates en UTC pour éviter les décalages de jours
-// qui pourraient augmenter artificiellement la durée (ex: 90 jours + 1h = 91 jours)
+// --- HELPERS DATE CORRIGÉS ---
+// ✅ Correction : On utilise Date.UTC pour construire la date directement en UTC.
+// Cela empêche le navigateur d'ajouter/retirer des heures à cause du fuseau horaire local,
+// ce qui évitera d'ajouter un jour fantôme à la plage de date.
+
 function toUtcIso(dateStr: string) {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-").map(Number);
-  // Création date locale midi pour éviter les problèmes de changement d'heure minuit
-  const date = new Date(y, m - 1, d, 12, 0, 0);
-  // On remet à minuit UTC strict
-  date.setUTCHours(0, 0, 0, 0);
-  return date.toISOString();
+  // Construit le 00:00:00 UTC strict pour ce jour
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0)).toISOString();
 }
 
 function toUtcIsoEndOfDay(dateStr: string) {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d, 12, 0, 0);
-  // Fin de journée UTC strict
-  date.setUTCHours(23, 59, 59, 999);
-  return date.toISOString();
+  // Construit le 23:59:59.999 UTC strict pour ce jour
+  return new Date(Date.UTC(y, m - 1, d, 23, 59, 59, 999)).toISOString();
 }
 
 function getScanErrorMessage(reason?: string): string {
