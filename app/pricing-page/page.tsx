@@ -28,14 +28,6 @@ const PRICING_PLANS = [
   },
 ];
 
-/*--- DEBUT ZONE TEST (À SUPPRIMER PLUS TARD) ---*/
-const TEST_PLAN = {
-  credits: 500,
-  price: 0.5, // 0.50$
-  stripePriceId: "price_1SvKRlHfMNgr7gopx7hT9dmi",
-};
-/* --- FIN ZONE TEST --- */
-
 const translations = {
   fr: {
     badge: "Tarification simple",
@@ -114,9 +106,6 @@ export default function Pricing() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
 
-  // --- STATE POUR LE TEST (À SUPPRIMER PLUS TARD) ---
-  const [isTestLoading, setIsTestLoading] = useState(false);
-
   const router = useRouter();
 
   // LA FONCTION D'ACHAT NORMALE
@@ -155,42 +144,6 @@ export default function Pricing() {
       setLoadingIndex(null);
     }
   };
-
-  /* --- FONCTION D'ACHAT TEST (À SUPPRIMER PLUS TARD) ---*/
-  const handleTestBuy = async () => {
-    if (!user) {
-      router.push(`/login?next=/pricing-page`);
-      return;
-    }
-
-    setIsTestLoading(true);
-
-    try {
-      const response = await fetch("/api/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          priceId: TEST_PLAN.stripePriceId,
-          credits: TEST_PLAN.credits,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        console.error("Erreur Stripe Test:", data.error);
-        alert("Erreur Test: " + (data.error || "Inconnue"));
-        setIsTestLoading(false);
-      }
-    } catch (error) {
-      console.error("Erreur fetch Test:", error);
-      alert("Erreur connexion serveur (Test).");
-      setIsTestLoading(false);
-    }
-  };
-  // --- FIN LOGIQUE TEST --- //
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col relative overflow-hidden">
@@ -328,37 +281,6 @@ export default function Pricing() {
             ))}
           </div>
         </section>
-
-        {/* --- DEBUT SECTION TEST (À SUPPRIMER PLUS TARD) --- */}
-        <section className="max-w-[600px] mx-auto px-6 mb-16">
-          <div className="bg-red-50 border-2 border-red-400 border-dashed rounded-xl p-6 text-center">
-            <h3 className="font-bold text-red-600 text-lg uppercase tracking-wider mb-2">
-              🛠️ Zone de Test (Paiement)
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Ce plan est invisible pour les utilisateurs normaux. Utilise-le
-              pour tester le flux de paiement sans dépenser une fortune.
-            </p>
-            <div className="flex items-center justify-center gap-4 mb-4">
-              <span className="font-bold text-2xl text-black">
-                {TEST_PLAN.credits} Crédits
-              </span>
-              <span className="text-xl text-gray-500">=</span>
-              <span className="font-bold text-2xl text-black">
-                ${TEST_PLAN.price.toFixed(2)} CAD
-              </span>
-            </div>
-
-            <button
-              onClick={handleTestBuy}
-              disabled={isTestLoading}
-              className="px-8 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isTestLoading ? "Redirection..." : "TESTER LE PAIEMENT (0.50$)"}
-            </button>
-          </div>
-        </section>
-        {/* --- FIN SECTION TEST ---  */}
 
         {/* Features */}
         <section className="max-w-[900px] mx-auto px-6 mb-16">
