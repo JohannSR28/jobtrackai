@@ -17,6 +17,8 @@ export type GetApplicationsParams = {
   userId: string;
   archived?: boolean;
   status?: JobStatus | "all";
+  search?: string;
+  sortOrder?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 };
@@ -32,27 +34,30 @@ export type GetApplicationsResponse = {
 export class GetApplicationsService {
   constructor(
     private jobApps: JobApplicationRepository,
-    private jobEmails: JobEmailRepository
+    private jobEmails: JobEmailRepository,
   ) {}
 
   async execute(
-    params: GetApplicationsParams
+    params: GetApplicationsParams,
   ): Promise<GetApplicationsResponse> {
     const {
       userId,
       archived = false,
       status = "all",
+      search = "",
+      sortOrder = "desc",
       page = 1,
       pageSize = 20,
     } = params;
 
-    // 1. Récupérer toutes les applications (triées par last_activity_at desc)
+    // 1. Récupérer toutes les applications avec recherche et tri
     const applications = await this.jobApps.findMany({
       userId,
       archived,
       status,
+      search, // <--- Passage au repo
       orderBy: "last_activity_at",
-      orderDir: "desc",
+      orderDir: sortOrder, // <--- Passage au repo
     });
 
     // 2. Récupérer les emails liés

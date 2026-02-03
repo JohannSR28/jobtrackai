@@ -1,5 +1,6 @@
 "use client";
 
+import { MergeResult } from "@/components/dashbord/_components/MergeComparaisonModal";
 import { useState, useCallback } from "react";
 
 // ========================================
@@ -129,12 +130,19 @@ type ApiApplicationResponse = {
   statusCounts: Record<StatusFilter, number>;
 };
 
+export type MergeableFields = {
+  company: string | null;
+  position: string | null;
+  status: JobStatus;
+  notes: string | null;
+};
+
 // ========================================
 // 3. HELPER : Mapping Strict (Api -> Domain)
 // ========================================
 
 function mapApiToDomain(
-  apiResponse: ApiApplicationResponse | null | undefined
+  apiResponse: ApiApplicationResponse | null | undefined,
 ): GetApplicationsResponse {
   const emptyResponse: GetApplicationsResponse = {
     applications: [],
@@ -242,17 +250,26 @@ export function useJobApplications() {
       status?: StatusFilter;
       page?: number;
       pageSize?: number;
+      search?: string;
+      sortOrder?: "asc" | "desc";
     }): Promise<GetApplicationsResponse> => {
       setLoading(true);
       setError(null);
       try {
         const searchParams = new URLSearchParams();
+
         if (params.archived !== undefined)
           searchParams.set("archived", String(params.archived));
+
         if (params.status) searchParams.set("status", params.status);
         if (params.page) searchParams.set("page", String(params.page));
         if (params.pageSize)
           searchParams.set("pageSize", String(params.pageSize));
+
+        // On mappe "search" vers "q" pour l'API
+        if (params.search) searchParams.set("q", params.search);
+        // On mappe "sortOrder" vers "sort"
+        if (params.sortOrder) searchParams.set("sort", params.sortOrder);
 
         const res = await fetch(`/api/applications?${searchParams}`);
         if (!res.ok) throw new Error("Failed to fetch applications");
@@ -268,7 +285,7 @@ export function useJobApplications() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   const updateApplication = useCallback(
@@ -288,7 +305,7 @@ export function useJobApplications() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   const archiveApplication = useCallback(
@@ -307,7 +324,7 @@ export function useJobApplications() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   const deleteApplication = useCallback(async (id: string) => {
@@ -345,9 +362,34 @@ export function useJobApplications() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
+  const mergeApplications = useCallback(
+    async (targetId: string, sourceId: string, finalData: MergeResult) => {
+      // Remplace 'any' par ton type MergeResult
+      setLoading(true);
+      try {
+        const res = await fetch("/api/applications/merge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetId, sourceId, finalData }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Merge failed");
+        }
+        return true;
+      } catch (err) {
+        console.error(err);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
   return {
     loading,
     error,
@@ -356,5 +398,6 @@ export function useJobApplications() {
     archiveApplication,
     deleteApplication,
     updateEmail,
+    mergeApplications,
   };
 }

@@ -20,17 +20,20 @@ function normalizeStatus(s: JobStatus): JobStatus {
 
 const STATUS_RANK: Record<JobStatus, number> = {
   unknown: 0,
-  applied: 2,
-  interview: 3,
-  offer: 4,
-  rejection: 1,
+  applied: 10, // Niveau de base
+  interview: 20, // Progression
+  rejection: 30, // État Final (Haute priorité)
+  offer: 30, //  État Final (Haute priorité)
 };
 
 function computeApplicationStatus(statuses: JobStatus[]): JobStatus {
   if (statuses.length === 0) return "unknown";
   let best: JobStatus = "unknown";
+
   for (const s of statuses) {
-    if (STATUS_RANK[s] >= STATUS_RANK[best]) best = s;
+    if (STATUS_RANK[s] >= STATUS_RANK[best]) {
+      best = s;
+    }
   }
   return best;
 }
@@ -38,7 +41,7 @@ function computeApplicationStatus(statuses: JobStatus[]): JobStatus {
 export class JobIngestionService {
   constructor(
     private jobEmails: JobEmailRepository,
-    private jobApps: JobApplicationRepository
+    private jobApps: JobApplicationRepository,
   ) {}
 
   async ingestAnalyzedMail(input: {
@@ -157,7 +160,7 @@ export class JobIngestionService {
 
     const lastActivityAt = emails.reduce(
       (maxIso, e) => (e.receivedAt > maxIso ? e.receivedAt : maxIso),
-      emails[0]!.receivedAt
+      emails[0]!.receivedAt,
     );
 
     await this.jobApps.updateSummary({

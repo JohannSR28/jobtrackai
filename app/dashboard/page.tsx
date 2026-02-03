@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 // --- CONTROLLER & ACTIONS ---
 import { useDashboardController } from "@/hooks/useDashboardController";
 import { useMailActions } from "@/hooks/useMailActions";
+import { useJobApplications, Bucket } from "@/hooks/useJobApplications"; // <--- IMPORT AJOUTÉ
 
 // --- COMPONENTS ---
 import { HeaderBar } from "@/components/dashbord/_components/HeaderBar";
@@ -24,6 +25,10 @@ import { MailConnectModal } from "@/components/dashbord/_components/MailConnectM
 import { ScanStartModal } from "@/components/dashbord/_components/ScanStartModal";
 import { EmailEditModal } from "@/components/dashbord/_components/EmailEditModal";
 import { StatusChangeModal } from "@/components/dashbord/_components/StatusChangeModal";
+import {
+  MergeComparisonModal,
+  MergeResult,
+} from "@/components/dashbord/_components/MergeComparaisonModal";
 
 // --- UTILS & TYPES ---
 import {
@@ -86,12 +91,19 @@ export default function JobDomainPage() {
 
   // 2. Hooks Auxiliaires
   const { removeConnection } = useMailActions();
+  const { mergeApplications } = useJobApplications(); // <--- RÉCUPÉRATION DU FAKE ENDPOINT
   const { language, setLanguage } = useLanguage();
   const t = translations[language]; // Sélection de la langue
 
   // 3. États UI Locaux (Sélection & Formulaires)
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  // --- ÉTATS POUR LA FUSION (MERGE) ---
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState<Bucket | null>(null);
+  const [mergeSource, setMergeSource] = useState<Bucket | null>(null);
+  const [isMerging, setIsMerging] = useState(false);
 
   // Drawer States (Notes & Statut)
   const [noteDraft, setNoteDraft] = useState("");
@@ -174,6 +186,31 @@ export default function JobDomainPage() {
     if (!window.confirm(t.alerts.deleteConfirm)) return;
     await ctrl.deleteApplication(selectedBucket.app.id);
     setSelectedAppId(null);
+    ctrl.fetchData();
+  };
+
+  // --- HANDLERS POUR LA FUSION (MERGE) ---
+
+  const handleMergeAttempt = (target: Bucket, source: Bucket) => {
+    setMergeTarget(target);
+    setMergeSource(source);
+    setMergeModalOpen(true);
+  };
+
+  const handleConfirmMerge = async (finalData: MergeResult) => {
+    if (!mergeTarget || !mergeSource) return;
+
+    setIsMerging(true);
+    // Appel au fake endpoint (ou real endpoint plus tard)
+    await mergeApplications(mergeTarget.app.id, mergeSource.app.id, finalData);
+    setIsMerging(false);
+
+    // Fermeture et nettoyage
+    setMergeModalOpen(false);
+    setMergeTarget(null);
+    setMergeSource(null);
+
+    // Rafraîchir les données (utile quand le backend sera connecté)
     ctrl.fetchData();
   };
 
@@ -279,6 +316,19 @@ export default function JobDomainPage() {
           pagedBuckets={ctrl.data?.applications ?? []}
           onSelectApp={setSelectedAppId}
           statusTextClass={statusTextClass}
+          // --- PROP AJOUTÉE POUR LA FUSION ---
+          onMergeAttempt={handleMergeAttempt}
+          // -- PROPS POUR LA RECHERCHE & TRI ---
+          onSearch={(term) => {
+            ctrl.filters.setSearch(term);
+            ctrl.filters.setPage(1);
+          }}
+          onSortToggle={() => {
+            const newOrder = ctrl.filters.sortOrder === "desc" ? "asc" : "desc";
+            ctrl.filters.setSortOrder(newOrder);
+          }}
+          currentSort={ctrl.filters.sortOrder}
+          isSearching={ctrl.dataLoading}
         />
       </div>
 
@@ -394,6 +444,16 @@ export default function JobDomainPage() {
             eventType: selectedEmail.event_type ?? "",
           });
         }}
+      />
+
+      {/* --- NOUVELLE MODALE DE FUSION --- */}
+      <MergeComparisonModal
+        open={mergeModalOpen}
+        onClose={() => setMergeModalOpen(false)}
+        targetBucket={mergeTarget}
+        sourceBucket={mergeSource}
+        onConfirm={handleConfirmMerge}
+        busy={isMerging}
       />
     </div>
   );

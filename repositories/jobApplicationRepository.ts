@@ -179,8 +179,9 @@ export class JobApplicationRepository {
     userId: string;
     archived?: boolean;
     status?: JobStatus | "all";
+    search?: string; // <--- NOUVEAU
     orderBy?: "last_activity_at" | "created_at";
-    orderDir?: "asc" | "desc";
+    orderDir?: "asc" | "desc"; // <--- NOUVEAU
   }): Promise<JobApplication[]> {
     let query = this.db
       .from("job_applications")
@@ -197,9 +198,20 @@ export class JobApplicationRepository {
       query = query.eq("status", input.status);
     }
 
-    // Tri
+    // --- NOUVEAU : LOGIQUE DE RECHERCHE ---
+    if (input.search && input.search.trim() !== "") {
+      const term = input.search.trim();
+      // On cherche si le terme est dans 'company' OU 'position'
+      // ilike = case insensitive
+      // %term% = contient le terme
+      query = query.or(`company.ilike.%${term}%,position.ilike.%${term}%`);
+    }
+
+    // Tri dynamique
     const orderBy = input.orderBy ?? "last_activity_at";
     const orderDir = input.orderDir ?? "desc";
+
+    // Supabase attend { ascending: boolean }
     query = query.order(orderBy, { ascending: orderDir === "asc" });
 
     const { data, error } = await query.returns<JobAppRow[]>();
