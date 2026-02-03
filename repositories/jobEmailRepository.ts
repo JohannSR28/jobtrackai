@@ -98,7 +98,7 @@ export class JobEmailRepository {
           event_type: input.eventType,
           confidence: input.confidence,
         },
-        { onConflict: "user_id,provider,provider_message_id" }
+        { onConflict: "user_id,provider,provider_message_id" },
       )
       .select("*")
       .single<JobEmailRow>();
@@ -285,6 +285,23 @@ export class JobEmailRepository {
       })
       .eq("user_id", input.userId)
       .eq("id", input.jobEmailId);
+
+    if (error) throw error;
+  }
+
+  async moveEmailsToApplication(input: {
+    userId: string;
+    sourceAppId: string;
+    targetAppId: string;
+  }): Promise<void> {
+    const { error } = await this.db
+      .from("job_emails")
+      .update({
+        application_id: input.targetAppId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", input.userId)
+      .eq("application_id", input.sourceAppId);
 
     if (error) throw error;
   }

@@ -15,14 +15,16 @@ import type { JobStatus } from "@/services/jobDomain/types";
  * - status: JobStatus | 'all' (default: 'all')
  * - page: number (default: 1)
  * - pageSize: number (default: 20)
+ * - q: string (search term)
+ * - sort: 'asc' | 'desc' (default: 'desc')
  *
  * Response:
  * {
- *   applications: Bucket[],
- *   total: number,
- *   page: number,
- *   maxPage: number,
- *   statusCounts: Record<JobStatus | 'all', number>
+ * applications: Bucket[],
+ * total: number,
+ * page: number,
+ * maxPage: number,
+ * statusCounts: Record<JobStatus | 'all', number>
  * }
  */
 export async function GET(request: NextRequest) {
@@ -46,11 +48,18 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") ?? "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") ?? "20", 10);
 
-    // 3. Validate
+    // --- NOUVEAU : Extraction Recherche & Tri ---
+    const search = searchParams.get("q") ?? undefined; // "q" est le standard pour search
+    const sortParam = searchParams.get("sort");
+    // On valide que sort est bien 'asc' ou 'desc', sinon par défaut 'desc'
+    const sortOrder =
+      sortParam === "asc" || sortParam === "desc" ? sortParam : "desc";
+
+    // 3. Validate Pagination & Status
     if (page < 1 || pageSize < 1 || pageSize > 100) {
       return NextResponse.json(
         { error: "Invalid pagination parameters" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,7 +75,7 @@ export async function GET(request: NextRequest) {
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { error: "Invalid status parameter" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -82,6 +91,9 @@ export async function GET(request: NextRequest) {
       status,
       page,
       pageSize,
+      // --- NOUVEAU : On passe les paramètres au service ---
+      search,
+      sortOrder,
     });
 
     // 6. Return
@@ -94,7 +106,7 @@ export async function GET(request: NextRequest) {
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

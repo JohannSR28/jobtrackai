@@ -100,6 +100,8 @@ export function useDashboardController() {
   const [archiveMode, setArchiveMode] = useState<"active" | "archived">(
     "active",
   );
+  const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isMobile, setIsMobile] = useState(false);
 
   const [modals, setModals] = useState({
@@ -137,11 +139,16 @@ export function useDashboardController() {
   const fetchData = useCallback(async () => {
     if (authLoading || !user) return;
     const pageSize = isMobile ? 10 : 20;
+
+    // 2. MISE À JOUR DE L'APPEL
     const res = await getApplications({
       archived: archiveMode === "archived",
       status: statusFilter,
       page,
       pageSize,
+      // Nouveaux params
+      search,
+      sortOrder,
     });
     setData(res as ApplicationsData);
   }, [
@@ -152,6 +159,8 @@ export function useDashboardController() {
     isMobile,
     authLoading,
     user,
+    search,
+    sortOrder,
   ]);
 
   useEffect(() => {
@@ -164,7 +173,7 @@ export function useDashboardController() {
 
   useEffect(() => {
     fetchData(); /* eslint-disable-next-line */
-  }, [page, statusFilter, archiveMode]);
+  }, [page, statusFilter, archiveMode, search, sortOrder]);
 
   // --- SYNC SCAN & BALANCE (Optimisé) ---
   useEffect(() => {
@@ -357,6 +366,10 @@ export function useDashboardController() {
       setStatusFilter,
       archiveMode,
       setArchiveMode,
+      search,
+      setSearch,
+      sortOrder,
+      setSortOrder,
     },
     fetchData,
     refreshBalance,
