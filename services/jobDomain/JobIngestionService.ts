@@ -23,7 +23,7 @@ const STATUS_RANK: Record<JobStatus, number> = {
   applied: 10, // Niveau de base
   interview: 20, // Progression
   rejection: 30, // État Final (Haute priorité)
-  offer: 30, // État Final (Haute priorité)
+  offer: 30, //  État Final (Haute priorité)
 };
 
 function computeApplicationStatus(statuses: JobStatus[]): JobStatus {
