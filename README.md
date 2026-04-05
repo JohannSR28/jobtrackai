@@ -70,13 +70,12 @@ L’objectif : vous aider à **garder le contrôle** sur vos candidatures, sans 
 
 > 🔲 = à faire ✅ = terminé
 
-- [ ] Authentification (Supabase)
-- [ ] Connexion Gmail / Outlook
-- [ ] Scan initial des e-mails
-- [ ] Création automatique de threads
-- [ ] Historique et dashboard
-- [ ] Notifications
-- [ ] Système de crédits + Stripe
+- [X] Authentification (Supabase)
+- [X] Connexion Gmail / Outlook
+- [X] Scan initial des e-mails
+- [X] Création automatique de threads
+- [X] Historique et dashboard
+- [X] Système de crédits + Stripe
 - [ ] Export et suppression des données
 
 ---
