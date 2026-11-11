@@ -1,4 +1,4 @@
-# 💼 JobTrackAI
+# 💼 JobTrackAI 
 
 > **JobTrackAI** est une application SaaS qui automatise le suivi de vos candidatures à partir de vos e-mails Gmail ou Outlook.  
 > Elle analyse, classe et met à jour vos candidatures automatiquement pour vous offrir un tableau de bord clair, des statistiques utiles et un système de points pour gérer vos scans.
